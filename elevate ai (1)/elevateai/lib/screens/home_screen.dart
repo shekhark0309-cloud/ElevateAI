@@ -181,8 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTrustScoreCard() {
-    final trust = _data?['trust'] ?? {};
-    final score = trust['overall_score'] as num?;
+    final trust = _data?['summary'] ?? {};
+    final score = trust['trust_score'] as num?;
+    final trend = trust['trend'] as String?;
+    final topSignal = trust['top_signal'] as String?;
+    final riskSignal = trust['risk_signal'] as String?;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -194,37 +197,56 @@ class _HomeScreenState extends State<HomeScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle),
-            child: const Icon(Icons.verified_user, color: Colors.amber, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              const Text('TrustScore', style: TextStyle(color: Colors.grey, fontSize: 14)),
-              Text(
-                score != null ? '${score.toDouble().toStringAsFixed(1)} / 10' : 'Syncing...',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle),
+                child: const Icon(Icons.verified_user, color: Colors.amber, size: 28),
               ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('TrustScore', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  Text(
+                    score != null ? '${score.toDouble().toStringAsFixed(1)} / 100' : 'Syncing...',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (trend == 'up') const Icon(Icons.trending_up, color: Colors.green)
+              else if (trend == 'down') const Icon(Icons.trending_down, color: Colors.red),
             ],
           ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12)),
-            child: const Row(
+          if (topSignal != null || riskSignal != null) ...[
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Icon(Icons.trending_up, color: Colors.green, size: 14),
-                SizedBox(width: 4),
-                Text('Real-time', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11)),
+                if (topSignal != null)
+                  _trustChip(topSignal, Colors.green),
+                if (riskSignal != null) ...[
+                  const SizedBox(width: 8),
+                  _trustChip(riskSignal, Colors.red),
+                ],
               ],
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _trustChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5),
       ),
     );
   }

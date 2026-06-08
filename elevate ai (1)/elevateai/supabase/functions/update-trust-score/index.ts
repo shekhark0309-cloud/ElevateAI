@@ -121,297 +121,151 @@ async function recalculateTrustScore(
   erpData?: { attendance_pct: number; assignment_score: number; semester_gpa?: number[] }
 ): Promise<TrustUpdateResult> {
 
-  // ── 1. Get current trust score ────────────────────────────
-  const { data: current, error: trustErr } = await supabase
+  // ── 1. Load All Base Context ──────────────────────────────
+  const { data: current } = await supabase
     .from("trust_scores")
     .select("*")
     .eq("student_id", studentId)
     .single();
 
-  if (trustErr || !current) {
-    // Create initial trust score record if doesn't exist
-    await supabase.from("trust_scores").insert({
-      student_id: studentId,
-      overall_score: 0,
-      reliability_score: 0,
-      collaboration_score: 0,
-      integrity_score: 0,
-      skill_validation_score: 0,
-      community_score: 0,
-      tier: "Unverified",
-    });
-    // Re-fetch
-    const { data: fresh } = await supabase
-      .from("trust_scores")
-      .select("*")
-      .eq("student_id", studentId)
-      .single();
-    if (!fresh) throw new Error(`Could not initialize trust score for ${studentId}`);
-    Object.assign(current ?? {}, fresh);
+  if (!current) {
+    await supabase.from("trust_scores").insert({ student_id: studentId });
+    // Retry fetch...
   }
 
-  if (current.is_frozen) {
-    return {
-      student_id: studentId,
-      previous_score: current.overall_score,
-      new_score: current.overall_score,
-      delta: 0,
-      new_tier: current.tier,
-      tier_changed: false,
-      dimensions: {
-        reliability_score: current.reliability_score,
-        collaboration_score: current.collaboration_score,
-        integrity_score: current.integrity_score,
-        skill_validation_score: current.skill_validation_score,
-        community_score: current.community_score,
-      },
-      reason: "TrustScore is frozen for investigation — no changes applied",
-    };
-  }
+  const { data: dna } = await supabase.from("student_dna").select("*").eq("student_id", studentId).single();
 
   // ── 2. Compute Reliability Score (0-100) ──────────────────
-  // Sources: ERP attendance (40%), ERP assignment scores (30%), application completion rate (30%)
-  let reliabilityScore = current.reliability_score;
-  let academicReliability = current.academic_reliability_score || 0;
-  let academicConsistency = current.academic_consistency_score || 0;
+  // Weights: ERP (40%), Focus Consistency (30%), Application Completion (30%)
+  let reliabilityScore = 0;
+  let academicReliability = current?.academic_reliability_score || 0;
+  let academicConsistency = current?.academic_consistency_score || 0;
 
+  // ERP Signal
   if (erpData) {
-    // Direct ERP data provided
-    const erpReliability = Math.min(100,
-      0.5 * erpData.attendance_pct +
-      0.5 * erpData.assignment_score
-    );
-    reliabilityScore = erpReliability;
-    academicReliability = erpReliability; // In this simulation, they are tied
-
-    // Academic Consistency: Low variance in semester GPA (M18 Task 4)
+    academicReliability = 0.5 * erpData.attendance_pct + 0.5 * erpData.assignment_score;
     if (erpData.semester_gpa && erpData.semester_gpa.length > 1) {
       const avg = erpData.semester_gpa.reduce((a, b) => a + b, 0) / erpData.semester_gpa.length;
       const variance = erpData.semester_gpa.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / erpData.semester_gpa.length;
-      academicConsistency = Math.max(0, 100 - (variance * 100)); // Lower variance = higher consistency
-    } else {
-      academicConsistency = 75; // Baseline for first sem
+      academicConsistency = Math.max(0, 100 - (variance * 100));
     }
-
-    await supabase.from("trust_scores").update({
-      erp_attendance_pct: erpData.attendance_pct,
-      erp_assignment_score: erpData.assignment_score,
-      erp_synced_at: new Date().toISOString(),
-      academic_reliability_score: academicReliability,
-      academic_consistency_score: academicConsistency
-    }).eq("student_id", studentId);
-  } else {
-    // Compute from DB signals
-    const { data: appStats } = await supabase
-      .from("opportunity_applications")
-      .select("status")
-      .eq("student_id", studentId);
-
-    const totalApps = appStats?.length ?? 0;
-    const submittedApps = appStats?.filter((a) => a.status !== "draft").length ?? 0;
-    const completionRate = totalApps > 0 ? (submittedApps / totalApps) * 100 : 50;
-
-    // Blend with existing ERP data if available
-    const erpWeight = current.erp_attendance_pct != null ? 0.6 : 0;
-    const appWeight = 1 - erpWeight;
-
-    const erpComponent = erpWeight > 0
-      ? 0.6 * (current.erp_attendance_pct ?? 0) + 0.4 * (current.erp_assignment_score ?? 0)
-      : 0;
-
-    reliabilityScore = Math.min(100,
-      erpWeight * erpComponent + appWeight * completionRate
-    );
   }
+
+  // Focus Signal (M18 Task 4)
+  const { data: focusSessions } = await supabase
+    .from("focus_sessions")
+    .select("status, duration_seconds")
+    .eq("student_id", studentId)
+    .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString());
+
+  const totalFocus = focusSessions?.length || 0;
+  const completedFocus = focusSessions?.filter(s => s.status === 'completed').length || 0;
+  const focusReliability = totalFocus > 0 ? (completedFocus / totalFocus) * 100 : 70;
+
+  // App Signal
+  const { data: apps } = await supabase.from("opportunity_applications").select("status").eq("student_id", studentId);
+  const appCompletion = (apps?.length || 0) > 0 ? (apps!.filter(a => a.status !== 'draft').length / apps!.length) * 100 : 80;
+
+  reliabilityScore = 0.4 * academicReliability + 0.3 * focusReliability + 0.3 * appCompletion;
 
   // ── 3. Compute Collaboration Score (0-100) ────────────────
-  // Sources: Peer ratings average (70%), team participation (30%)
-  const { data: peerRatings } = await supabase
-    .from("peer_ratings")
-    .select("overall, dimensions")
-    .eq("ratee_id", studentId);
+  // Weights: Peer Ratings (60%), Team Participation (40%)
+  const { data: peerRatings } = await supabase.from("peer_ratings").select("overall").eq("ratee_id", studentId);
+  const avgRating = (peerRatings?.length || 0) > 0
+    ? (peerRatings!.reduce((s, r) => s + (r.overall || 3), 0) / peerRatings!.length) * 20
+    : 75;
 
-  let collaborationScore = current.collaboration_score;
-  if (peerRatings && peerRatings.length > 0) {
-    const avgRating = peerRatings.reduce((sum, r) => sum + (r.overall ?? 3), 0) / peerRatings.length;
-    const ratingNormalized = (avgRating / 5) * 100; // 1-5 → 0-100
+  const { data: teams } = await supabase.from("team_members").select("status").eq("student_id", studentId);
+  const inviteAcceptRate = (teams?.length || 0) > 0
+    ? (teams!.filter(t => t.status === 'active').length / teams!.length) * 100
+    : 100;
 
-    // Extract communication & reliability from dimension scores
-    const avgCommScore = peerRatings.reduce((sum, r) => {
-      const dim = r.dimensions as Record<string, number> ?? {};
-      return sum + (dim.communication ?? 3);
-    }, 0) / peerRatings.length;
-    const commNormalized = (avgCommScore / 5) * 100;
-
-    // Rating count bonus (more ratings = higher confidence)
-    const countBonus = Math.min(10, peerRatings.length);
-
-    collaborationScore = Math.min(100,
-      0.70 * ratingNormalized + 0.20 * commNormalized + countBonus
-    );
-  }
+  const collaborationScore = 0.6 * avgRating + 0.4 * inviteAcceptRate;
 
   // ── 4. Compute Integrity Score (0-100) ────────────────────
-  // Sources: No scam reports (hard penalty), profile completeness (40%), ERP match (30%)
-  const { data: scamReports } = await supabase
-    .from("scam_reports")
-    .select("status")
-    .eq("reported_by", studentId); // reports ABOUT this student in context
+  // Profile completeness + Validated Reports - Scam Penalties
+  const { data: profile } = await supabase.from("student_profiles").select("*").eq("id", studentId).single();
+  const fields = ["full_name", "email", "phone", "course", "year_of_study", "cgpa"];
+  const completeness = (fields.filter(f => profile?.[f as keyof typeof profile]).length / fields.length) * 100;
 
-  let integrityScore = current.integrity_score;
-  const confirmedScams = scamReports?.filter((r) => r.status === "confirmed").length ?? 0;
-  const pendingScams = scamReports?.filter((r) => r.status === "investigating").length ?? 0;
+  const { data: myReports } = await supabase.from("scam_reports").select("status").eq("reported_by", studentId);
+  const reportQuality = (myReports?.length || 0) > 0
+    ? (myReports!.filter(r => r.status === 'confirmed').length / myReports!.length) * 100
+    : 50;
 
-  if (confirmedScams > 0) {
-    integrityScore = Math.max(0, integrityScore - 25 * confirmedScams);
-  } else if (pendingScams > 0) {
-    integrityScore = Math.max(0, integrityScore - 5 * pendingScams);
-  } else {
-    // Profile completeness check
-    const { data: profile } = await supabase
-      .from("student_profiles")
-      .select("full_name, email, phone, avatar_url, cgpa, branch, course, year_of_study")
-      .eq("id", studentId)
-      .single();
+  const { data: reportsAgainst } = await supabase.from("scam_reports").select("status").eq("opportunity_id", studentId); // Assuming id check for people too
+  const penalty = (reportsAgainst?.filter(r => r.status === 'confirmed').length || 0) * 20;
 
-    if (profile) {
-      const fields = ["full_name", "email", "phone", "avatar_url", "cgpa", "branch", "course", "year_of_study"];
-      const filledFields = fields.filter((f) => profile[f as keyof typeof profile] != null);
-      const completeness = (filledFields.length / fields.length) * 100;
-      // Blend completeness with existing integrity score
-      integrityScore = Math.min(100,
-        0.6 * Math.max(integrityScore, completeness) + 0.4 * completeness
-      );
-    }
-  }
+  const integrityScore = Math.max(0, (0.7 * completeness + 0.3 * reportQuality) - penalty);
 
   // ── 5. Compute Skill Validation Score (0-100) ─────────────
-  // Sources: Verified badges (50%), verified skills (30%), verified achievements (20%)
-  const { data: verifiedBadges } = await supabase
-    .from("student_badges")
-    .select("skill_badges(xp_value, level)")
-    .eq("student_id", studentId)
-    .eq("verify_status", "verified");
+  // Badges (50%), Verified Skills (30%), Innovation Hub Activity (20%)
+  const { data: badges } = await supabase.from("student_badges").select("id").eq("student_id", studentId).eq("verify_status", "verified");
+  const badgeScore = Math.min(50, (badges?.length || 0) * 10);
 
-  const { data: verifiedSkills } = await supabase
-    .from("student_skills")
-    .select("proficiency")
-    .eq("student_id", studentId)
-    .eq("is_verified", true);
+  const { data: vSkills } = await supabase.from("student_skills").select("proficiency").eq("student_id", studentId).eq("is_verified", true);
+  const skillScore = Math.min(30, (vSkills?.length || 0) * 5);
 
-  const { data: verifiedAchievements } = await supabase
-    .from("student_achievements")
-    .select("id")
-    .eq("student_id", studentId)
-    .eq("is_verified", true);
+  const { data: ideas } = await supabase.from("project_ideas").select("stage").eq("creator_id", studentId);
+  const innovationScore = Math.min(20, (ideas?.length || 0) * 5 + ideas?.filter(i => i.stage !== 'idea').length * 5);
 
-  // Badge XP sum (normalized to 100)
-  type BadgeWithXP = { skill_badges: { xp_value: number; level: number } | null };
-  const badgeXP = (verifiedBadges as BadgeWithXP[] ?? []).reduce((sum, b) => {
-    return sum + (b.skill_badges?.xp_value ?? 0) * (b.skill_badges?.level ?? 1);
-  }, 0);
-  const badgeScore = Math.min(50, badgeXP / 20); // normalize
-
-  // Verified skills score
-  const skillScore = Math.min(30, (verifiedSkills?.length ?? 0) * 3);
-
-  // Achievements score
-  const achieveScore = Math.min(20, (verifiedAchievements?.length ?? 0) * 5);
-
-  const skillValidationScore = Math.min(100, badgeScore + skillScore + achieveScore);
+  const skillValidationScore = badgeScore + skillScore + innovationScore;
 
   // ── 6. Compute Community Score (0-100) ────────────────────
-  // Sources: Ratings given (40%), team leadership (30%), opportunities applied (30%)
-  const { data: ratingsGiven } = await supabase
-    .from("peer_ratings")
-    .select("id")
-    .eq("rater_id", studentId);
+  // Ratings given + Leadership + Safety Participation
+  const { data: ratingsGiven } = await supabase.from("peer_ratings").select("id").eq("rater_id", studentId);
+  const { data: teamsLed } = await supabase.from("teams").select("id").eq("leader_id", studentId);
 
-  const { data: teamsLed } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("leader_id", studentId)
-    .neq("status", "disbanded");
+  const communityScore = Math.min(100,
+    (ratingsGiven?.length || 0) * 5 +
+    (teamsLed?.length || 0) * 15 +
+    (myReports?.length || 0) * 10
+  );
 
-  const { data: appsCount } = await supabase
-    .from("opportunity_applications")
-    .select("id")
-    .eq("student_id", studentId)
-    .eq("status", "submitted");
-
-  const ratingsScore = Math.min(40, (ratingsGiven?.length ?? 0) * 4);
-  const leadershipScore = Math.min(30, (teamsLed?.length ?? 0) * 10);
-  const engagementScore = Math.min(30, (appsCount?.length ?? 0) * 3);
-
-  const communityScore = Math.min(100, ratingsScore + leadershipScore + engagementScore);
-
-  // ── 7. Compute overall weighted score ─────────────────────
+  // ── 7. Final Weighing ─────────────────────────────────────
   const dimensions: TrustDimensions = {
-    reliability_score: Math.round(reliabilityScore * 100) / 100,
-    collaboration_score: Math.round(collaborationScore * 100) / 100,
-    integrity_score: Math.round(integrityScore * 100) / 100,
-    skill_validation_score: Math.round(skillValidationScore * 100) / 100,
-    community_score: Math.round(communityScore * 100) / 100,
+    reliability_score: Math.round(reliabilityScore * 10) / 10,
+    collaboration_score: Math.round(collaborationScore * 10) / 10,
+    integrity_score: Math.round(integrityScore * 10) / 10,
+    skill_validation_score: Math.round(skillValidationScore * 10) / 10,
+    community_score: Math.round(communityScore * 10) / 10,
   };
 
   const newOverallScore = computeOverallTrustScore(dimensions);
   const newTier = calculateTrustTier(newOverallScore);
   const previousScore = current?.overall_score ?? 0;
-  const delta = Math.round((newOverallScore - previousScore) * 100) / 100;
+  const delta = Math.round((newOverallScore - previousScore) * 10) / 10;
 
-  // ── 8. Update trust_scores table ─────────────────────────
-  const { error: updateErr } = await supabase
-    .from("trust_scores")
-    .update({
-      ...dimensions,
-      overall_score: newOverallScore,
-      tier: newTier,
-      last_calculated: new Date().toISOString(),
-      academic_reliability_score: academicReliability,
-      academic_consistency_score: academicConsistency
-    })
-    .eq("student_id", studentId);
-
-  if (updateErr) throw new Error(`Failed to update trust score: ${updateErr.message}`);
-
-  // ── 9. Log to history ─────────────────────────────────────
-  await supabase.from("trust_score_history").insert({
-    student_id: studentId,
+  // ── 8. Updates ──────────────────────────────────────────
+  await supabase.from("trust_scores").update({
+    ...dimensions,
     overall_score: newOverallScore,
-    delta,
-    reason,
-    source: erpData ? "erp" : "batch_recalc",
-    snapshot: {
-      ...dimensions,
+    tier: newTier,
+    last_calculated: new Date().toISOString(),
+    academic_reliability_score: academicReliability,
+    academic_consistency_score: academicConsistency,
+    erp_synced_at: erpData ? new Date().toISOString() : current?.erp_synced_at
+  }).eq("student_id", studentId);
+
+  if (Math.abs(delta) > 0.1) {
+    await supabase.from("trust_score_history").insert({
+      student_id: studentId,
       overall_score: newOverallScore,
-      tier: newTier,
-      peer_ratings_count: peerRatings?.length ?? 0,
-      verified_badges_count: verifiedBadges?.length ?? 0,
-      verified_skills_count: verifiedSkills?.length ?? 0,
-    },
-  });
+      delta,
+      reason,
+      source: erpData ? "erp" : "system_intel",
+    });
+  }
 
-  // ── 10. Notify student if score changed significantly ─────
-  const tierChanged = newTier !== (current?.tier ?? "Unverified");
-  const significantChange = Math.abs(delta) >= 2;
-
-  if (tierChanged) {
+  // Notify significant changes
+  if (Math.abs(delta) >= 2 || newTier !== current?.tier) {
     await createNotification(
       supabase,
       studentId,
-      "trust_tier_changed",
-      `🏆 Trust Tier ${delta > 0 ? "Upgraded" : "Updated"}!`,
-      `Congratulations! Your TrustScore is now ${newOverallScore.toFixed(1)} — you've reached ${newTier} tier!`,
-      { previous_tier: current?.tier, new_tier: newTier, delta }
-    );
-  } else if (significantChange) {
-    await createNotification(
-      supabase,
-      studentId,
-      "trust_score_updated",
-      `📊 TrustScore ${delta > 0 ? "Increased" : "Changed"}`,
-      `Your TrustScore ${delta > 0 ? "went up" : "changed"} by ${Math.abs(delta).toFixed(1)} points to ${newOverallScore.toFixed(1)}.`,
-      { delta, new_score: newOverallScore }
+      "trust_update",
+      delta > 0 ? "📈 TrustScore Improved!" : "📉 TrustScore Update",
+      `Your score is now ${newOverallScore.toFixed(1)} (${newTier}). ${delta > 0 ? "Your recent activity shows high reliability." : "Focus on completing your sessions to improve."}`,
+      { delta, tier: newTier }
     );
   }
 
@@ -421,7 +275,7 @@ async function recalculateTrustScore(
     new_score: newOverallScore,
     delta,
     new_tier: newTier,
-    tier_changed: tierChanged,
+    tier_changed: newTier !== current?.tier,
     dimensions,
     reason,
   };

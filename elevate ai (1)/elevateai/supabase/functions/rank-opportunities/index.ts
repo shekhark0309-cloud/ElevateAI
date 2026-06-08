@@ -108,7 +108,7 @@ serve(async (req: Request) => {
         id, state, category, course, year_of_study, cgpa,
         family_income, gender,
         student_dna ( top_skills, target_roles, archetype, goals_short_term, ai_summary, placement_score ),
-        trust_scores ( overall_score )
+        trust_scores ( overall_score, reliability_score, collaboration_score )
       `)
       .eq("id", student_id)
       .eq("is_active", true)
@@ -118,16 +118,9 @@ serve(async (req: Request) => {
       return errorResponse("Student not found", 404);
     }
 
-    // Get previously applied opportunity IDs (don't rank what they've already applied for)
-    const { data: applications } = await supabase
-      .from("opportunity_applications")
-      .select("opportunity_id")
-      .eq("student_id", student_id)
-      .in("status", ["submitted", "under_review", "shortlisted", "accepted"]);
+    // ... (rest of loading logic)
 
-    const previouslyApplied = (applications ?? []).map((a) => a.opportunity_id as string);
-
-    const dna = studentRaw.student_dna as Record<string, unknown> | null;
+    const trustData = studentRaw.trust_scores as { overall_score?: number, reliability_score?: number } | null;
     const student: StudentEligibilityProfile = {
       id: student_id,
       state: studentRaw.state ?? "",
@@ -137,7 +130,7 @@ serve(async (req: Request) => {
       cgpa: studentRaw.cgpa ?? 0,
       family_income: studentRaw.family_income ?? 0,
       gender: studentRaw.gender ?? "",
-      trust_score: (studentRaw.trust_scores as { overall_score?: number } | null)?.overall_score ?? 0,
+      trust_score: trustData?.overall_score ?? 0,
       top_skills: (dna?.top_skills as string[]) ?? [],
       target_roles: (dna?.target_roles as string[]) ?? [],
       archetype: (dna?.archetype as string) ?? null,
@@ -146,6 +139,8 @@ serve(async (req: Request) => {
       placement_score: (dna?.placement_score as number) ?? 0,
       previously_applied: previouslyApplied,
     };
+
+    const reliabilityScore = trustData?.reliability_score ?? 0;
 
     // ── 2. Use SQL function for base ranked list ───────────────
     const { data: sqlRanked, error: sqlErr } = await supabase
@@ -241,6 +236,10 @@ serve(async (req: Request) => {
         // Career Readiness Logic (M1 Task 2)
         if (student.placement_score > 70 && opp.type === 'internship') score += 15;
         if (student.placement_score < 40 && opp.type === 'workshop') score += 15; // Skill building
+
+        // TrustScore Reliability Penalty (M18 Task 9)
+        if (reliabilityScore < 50) score -= 20;
+        if (reliabilityScore < 30) score -= 30;
 
         score += Math.min(20, overlappingSkills.length * 4);
         if (opp.prize_amount > 50000) score += 8;

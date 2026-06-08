@@ -74,7 +74,19 @@ BEGIN
     'focus_score', COALESCE(v_dna.focus_score, 0),
     'productivity_score', COALESCE(v_dna.productivity_score, 0),
     'streak', COALESCE(v_dna.study_streak, 0),
-    'trend', v_overall_trend
+    'trend', v_overall_trend,
+    'top_signal', CASE
+      WHEN v_trust.reliability_score > 80 THEN 'High Reliability'
+      WHEN v_trust.collaboration_score > 80 THEN 'Elite Collaborator'
+      WHEN v_trust.skill_validation_score > 80 THEN 'Skill Champion'
+      ELSE 'Building Trust'
+    END,
+    'risk_signal', CASE
+      WHEN v_profile.erp_backlogs > 0 THEN 'Academic Backlog'
+      WHEN v_trust.reliability_score < 40 THEN 'Inconsistency'
+      WHEN v_dna.focus_risk_level = 'high' THEN 'Focus Dropout'
+      ELSE NULL
+    END
   );
 
   -- 6. Academic Snapshot (M18 Task 7)

@@ -54,6 +54,7 @@ DECLARE
   v_skill_count     INTEGER;
   v_badge_count     INTEGER;
   v_trust_score     NUMERIC;
+  v_reliability     NUMERIC;
   v_cgpa            NUMERIC;
   v_placement_score NUMERIC;
   v_salary_min      INTEGER;
@@ -69,15 +70,18 @@ BEGIN
   SELECT COUNT(*) INTO v_badge_count FROM student_badges
     WHERE student_id = p_student_id AND verify_status = 'verified';
 
-  SELECT overall_score INTO v_trust_score FROM trust_scores
-    WHERE student_id = p_student_id;
+  SELECT overall_score, reliability_score INTO v_trust_score, v_reliability
+  FROM trust_scores
+  WHERE student_id = p_student_id;
 
   SELECT cgpa INTO v_cgpa FROM student_profiles WHERE id = p_student_id;
 
+  -- Weighted placement score formula (Now includes Reliability Signal)
   v_placement_score := LEAST(100,
     (COALESCE(v_skill_count, 0) * 3) +
     (COALESCE(v_badge_count, 0) * 8) +
-    (COALESCE(v_trust_score, 0) * 0.2) +
+    (COALESCE(v_trust_score, 0) * 0.1) +
+    (COALESCE(v_reliability, 0) * 0.1) +
     (COALESCE(v_cgpa, 0) * 4)
   );
 
