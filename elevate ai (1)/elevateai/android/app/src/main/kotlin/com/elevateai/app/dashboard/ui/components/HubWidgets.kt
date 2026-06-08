@@ -88,14 +88,43 @@ fun NetworkHubWidget(data: JsonObject?, onClick: () -> Unit) {
 @Composable
 fun FocusCenterWidget(data: JsonObject?, onClick: () -> Unit) {
     if (data == null) return
+    val risk = data["risk_level"]?.jsonPrimitive?.content ?: "low"
+    val intervention = data["intervention"]?.jsonPrimitive?.content
+    
+    val color = when(risk) {
+        "critical" -> MaterialTheme.colorScheme.error
+        "high" -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), onClick = onClick) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader("FOCUS & PRODUCTIVITY", Icons.Default.Timer)
+            
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Today: ${data["focus_time"]?.jsonPrimitive?.content ?: "0m"}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Today: ${data["today_minutes"]?.jsonPrimitive?.content ?: "0"}m", 
+                    style = MaterialTheme.typography.titleMedium,
+                    color = color
+                )
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(text = "Streak: ${data["streak"]?.jsonPrimitive?.content ?: "0"} days", color = MaterialTheme.colorScheme.primary)
+                if (risk != "low") {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "${risk.uppercase()} RISK", style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
+                }
             }
+
+            intervention?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = it, style = MaterialTheme.typography.bodySmall, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            data["recommended_session"]?.jsonPrimitive?.content?.let {
+                Text(text = "Recommended: $it session", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            }
+
             TextButton(onClick = onClick) { Text("Start Focus Session") }
         }
     }

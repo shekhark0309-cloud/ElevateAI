@@ -1,5 +1,5 @@
 -- =============================================================================
--- ElevateAI — M4: FocusAI Notifications
+-- ElevateAI — M4: FocusAI Notifications (Updated with Intelligence)
 -- File: migrations/24_focus_ai_notifications.sql
 -- =============================================================================
 
@@ -21,49 +21,54 @@ SET search_path = public
 AS $$
 DECLARE
   v_critical_deadline RECORD;
-  v_focus_risk        TEXT;
+  v_focus_intel       JSONB;
   v_dna_gap           TEXT;
   v_career_risk       TEXT;
   v_alerts            JSONB := '[]'::JSONB;
 BEGIN
-  -- 1. Check for Scholarship Deadlines (< 48 hours)
-  SELECT title, apply_deadline INTO v_critical_deadline
+  -- 1. Check for Scholarship/Opportunity Deadlines (< 48 hours)
+  SELECT title, apply_deadline, id INTO v_critical_deadline
   FROM v_active_opportunities
-  WHERE type = 'scholarship'
-    AND apply_deadline BETWEEN NOW() AND (NOW() + INTERVAL '48 hours')
+  WHERE apply_deadline BETWEEN NOW() AND (NOW() + INTERVAL '48 hours')
   LIMIT 1;
 
   IF v_critical_deadline.title IS NOT NULL THEN
     v_alerts := v_alerts || jsonb_build_object(
       'type', 'critical_deadline',
       'title', 'Deadline Alert: ' || v_critical_deadline.title,
+      'body', 'You have less than 48 hours to apply. Start a focused application session.',
       'priority', 'critical',
       'action_label', 'Apply Now',
-      'action_url', '/scholarship/details'
+      'action_url', '/opportunities',
+      'urgency', 10
     );
   END IF;
 
-  -- 2. Check for Focus Risk (from M5)
-  SELECT focus_risk_level INTO v_focus_risk FROM student_dna WHERE student_id = p_student_id;
-  IF v_focus_risk = 'critical' OR v_focus_risk = 'high' THEN
+  -- 2. Get Focus Intelligence (M5)
+  v_focus_intel := get_focus_intelligence(p_student_id);
+
+  IF (v_focus_intel->>'risk_level') IN ('high', 'critical') THEN
     v_alerts := v_alerts || jsonb_build_object(
       'type', 'focus_intervention',
-      'title', 'Consistency at Risk: Start a focus session to maintain your score.',
-      'priority', 'high',
-      'action_label', 'Focus Now',
-      'action_url', '/focus'
+      'title', 'OS Alert: ' || (v_focus_intel->>'intervention'),
+      'body', 'Consistency is key to maintaining your Gold TrustScore tier.',
+      'priority', v_focus_intel->>'risk_level',
+      'action_label', 'Start Session',
+      'action_url', '/focus',
+      'urgency', CASE WHEN v_focus_intel->>'risk_level' = 'critical' THEN 9 ELSE 7 END
     );
   END IF;
 
-  -- 3. Check for Skill Gaps (Career Predictor signals)
-  -- Simplified: If DSA score is low and student is CS
-  IF EXISTS (SELECT 1 FROM student_skills WHERE student_id = p_student_id AND skill_name = 'DSA' AND proficiency < 3) THEN
+  -- 3. Check for Skill Gaps (M7)
+  IF EXISTS (SELECT 1 FROM student_dna WHERE student_id = p_student_id AND jsonb_array_length(skill_gaps) > 0) THEN
     v_alerts := v_alerts || jsonb_build_object(
       'type', 'skill_gap',
-      'title', 'Placement Ready? Boost your DSA skills for upcoming internships.',
+      'title', 'Career Growth Opportunity',
+      'body', 'Identify and close your top skill gap to increase your internship match score.',
       'priority', 'medium',
-      'action_label', 'Take Challenge',
-      'action_url', '/skills/challenges'
+      'action_label', 'View Roadmap',
+      'action_url', '/career_predictor',
+      'urgency', 5
     );
   END IF;
 
@@ -75,27 +80,33 @@ $$;
 CREATE OR REPLACE FUNCTION prioritize_notification()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.priority := CASE
+  NEW.priority := COALESCE(NEW.priority, CASE
     WHEN NEW.type ILIKE '%deadline%' THEN 'critical'
     WHEN NEW.type ILIKE '%request%' THEN 'high'
     WHEN NEW.type ILIKE '%match%' THEN 'medium'
     ELSE 'low'
-  END;
+  END);
 
-  NEW.urgency := CASE
+  NEW.urgency := COALESCE(NEW.urgency, CASE
     WHEN NEW.priority = 'critical' THEN 10
     WHEN NEW.priority = 'high' THEN 8
     WHEN NEW.priority = 'medium' THEN 5
     ELSE 2
-  END;
+  END);
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER on_notification_added
-  BEFORE INSERT ON notifications
-  FOR EACH ROW
-  EXECUTE FUNCTION prioritize_notification();
+-- Check and create trigger
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_notification_added') THEN
+        CREATE TRIGGER on_notification_added
+          BEFORE INSERT ON notifications
+          FOR EACH ROW
+          EXECUTE FUNCTION prioritize_notification();
+    END IF;
+END $$;
 
 GRANT EXECUTE ON FUNCTION get_focus_ai_priorities TO authenticated;

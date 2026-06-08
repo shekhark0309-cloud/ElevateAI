@@ -1,5 +1,5 @@
 -- =============================================================================
--- ElevateAI — M5: Smart Focus Intervention
+-- ElevateAI — M5: Smart Focus Intervention (Updated with Flywheel)
 -- File: migrations/23_focus_intervention_system.sql
 -- =============================================================================
 
@@ -42,6 +42,7 @@ DECLARE
   v_days_inactive     INTEGER;
   v_intervention_msg  TEXT;
   v_streak            INTEGER;
+  v_urgent_opp        RECORD;
 BEGIN
   -- 1. Fetch current status
   SELECT * INTO v_dna FROM student_dna WHERE student_id = p_student_id;
@@ -61,28 +62,33 @@ BEGIN
   END IF;
 
   -- 4. Calculate Productivity Score (0-100)
-  -- Logic: Sessions (40%) + Challenges (30%) + Tasks (20%) + Apps (10%)
   v_productivity := LEAST(100,
     (COALESCE(v_dna.daily_focus_minutes, 0) * 0.5) +
     (CASE WHEN v_last_challenge > NOW() - INTERVAL '24 hours' THEN 20 ELSE 0 END) +
     (CASE WHEN v_last_task > NOW() - INTERVAL '24 hours' THEN 15 ELSE 0 END)
   );
 
-  -- 5. Generate Personalized Intervention
+  -- 5. Generate Personalized Intervention (Task 2 & 5)
   v_intervention_msg := CASE
-    WHEN v_risk_level = 'critical' THEN 'Your progress is stalling. Re-engage with a 15-min focus session today.'
-    WHEN v_risk_level = 'high' THEN 'Your streak is at risk! Complete one task to keep the momentum.'
-    WHEN v_dna.archetype = 'Builder' AND v_productivity < 40 THEN 'A Builder needs consistency. Start a Project Focus session now.'
-    WHEN v_dna.archetype = 'Creative' AND v_days_inactive > 1 THEN 'New inspiration awaits. Check out trending ideas in the hub.'
-    ELSE 'You are doing great! Keep maintaining your focus score.'
+    WHEN v_risk_level = 'critical' THEN 'Urgent: Your growth is stalling. Start a focus session to recover your TrustScore.'
+    WHEN v_risk_level = 'high' THEN 'Consistency Alert: Your streak is at risk. Log 20 minutes today.'
+    WHEN v_dna.archetype = 'Builder' AND v_productivity < 40 THEN 'Builder DNA detected low project focus. Commit to a 30m project block.'
+    WHEN v_dna.archetype = 'Strategist' AND v_days_inactive > 2 THEN 'Strategic gap: Review your roadmap and set 3 tasks for tomorrow.'
+    ELSE 'Great focus! You are in the top 10% of productive students this week.'
   END;
 
   -- 6. Update DNA for persistence
   UPDATE student_dna SET
     focus_risk_level = v_risk_level,
     productivity_score = v_productivity,
-    focus_score = (focus_score * 0.7 + v_productivity * 0.3) -- Moving average
+    focus_score = (focus_score * 0.7 + v_productivity * 0.3)
   WHERE student_id = p_student_id;
+
+  -- 7. Trigger TrustScore sync if risk changes
+  IF v_risk_level IN ('high', 'critical') THEN
+     -- Fire an async update or signal
+     PERFORM pg_notify('focus_risk_detected', jsonb_build_object('student_id', p_student_id, 'risk', v_risk_level)::text);
+  END IF;
 
   RETURN jsonb_build_object(
     'risk_level', v_risk_level,
@@ -90,7 +96,9 @@ BEGIN
     'days_inactive', v_days_inactive,
     'intervention', v_intervention_msg,
     'today_minutes', v_dna.daily_focus_minutes,
-    'current_streak', v_dna.study_streak
+    'current_streak', v_dna.study_streak,
+    'goal_minutes', (COALESCE(jsonb_array_length(v_dna.skill_gaps), 0) * 30 + 60), -- Dynamic goal
+    'next_recommended_session', CASE WHEN v_dna.archetype = 'Builder' THEN 'Project Work' ELSE 'Deep Study' END
   );
 END;
 $$;
@@ -109,6 +117,10 @@ DECLARE
   v_student_id UUID := auth.uid();
   v_session_id UUID;
 BEGIN
+  IF v_student_id IS NULL THEN
+    RAISE EXCEPTION 'Auth required';
+  END IF;
+
   IF p_action = 'start' THEN
     INSERT INTO focus_sessions (student_id, focus_mode, status)
     VALUES (v_student_id, p_mode, 'active')
@@ -124,11 +136,15 @@ BEGIN
     WHERE student_id = v_student_id AND status = 'active'
     RETURNING id INTO v_session_id;
 
-    -- Update daily minutes in DNA
+    -- Update daily minutes and trigger DNA + Trust updates
     UPDATE student_dna SET
       daily_focus_minutes = daily_focus_minutes + (p_duration / 60),
-      last_activity_at = NOW()
+      last_activity_at = NOW(),
+      study_streak = CASE WHEN last_activity_at::date = (NOW() - INTERVAL '1 day')::date THEN study_streak + 1 ELSE study_streak END
     WHERE student_id = v_student_id;
+
+    -- Signal for realtime flywheel
+    PERFORM pg_notify('focus_session_completed', jsonb_build_object('student_id', v_student_id, 'duration', p_duration)::text);
 
     RETURN jsonb_build_object('success', TRUE, 'session_id', v_session_id);
   END IF;
@@ -139,7 +155,9 @@ $$;
 
 -- 5. RLS & Permissions
 ALTER TABLE focus_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Students manage own sessions" ON focus_sessions FOR ALL USING (student_id = auth.uid());
+DO $$ BEGIN
+  CREATE POLICY "Students manage own sessions" ON focus_sessions FOR ALL USING (student_id = auth.uid());
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 GRANT EXECUTE ON FUNCTION get_focus_intelligence TO authenticated;
 GRANT EXECUTE ON FUNCTION manage_focus_session TO authenticated;
