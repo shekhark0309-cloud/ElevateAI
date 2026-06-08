@@ -77,7 +77,68 @@ class CampusService {
     });
   }
 
+  Future<List<Map<String, dynamic>>> getDiscoveryFeed({
+    String filterType = 'all',
+    int limit = 20,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    final response = await _supabase.rpc(
+      'get_student_discovery_feed',
+      params: {
+        'p_student_id': userId,
+        'p_filter_type': filterType,
+        'p_limit': limit,
+      },
+    );
+
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  Future<void> manageConnection({
+    required String targetId,
+    required String action,
+    String type = 'study_buddy',
+    String? subject,
+  }) async {
+    await _supabase.rpc(
+      'manage_campus_connection',
+      params: {
+        'p_target_student_id': targetId,
+        'p_action': action,
+        'p_connection_type': type,
+        'p_subject': subject,
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getStudyGroups() async {
+    final response = await _supabase
+        .from('teams')
+        .select()
+        .eq('category', 'study_group');
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  Future<void> createStudyGroup({
+    required String name,
+    required String tagline,
+    List<String> requiredSkills = const [],
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _supabase.rpc('create_team_with_members', params: {
+      'p_name': name,
+      'p_tagline': tagline,
+      'p_required_skills': requiredSkills,
+      'p_category': 'study_group', // Added by migration 21
+    });
+  }
+
   Future<MealPreference?> getMealPreference(String studentId) async {
+... (rest of the file)
     final response = await _supabase
         .from('meal_preferences')
         .select()
