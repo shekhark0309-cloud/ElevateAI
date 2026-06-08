@@ -57,25 +57,24 @@ fun OSDashboardScreen(
                         TopActionCard(action, onAction = { onNavigate(action.action) })
                     }
 
-                    // SECTION 11: SMART NUDGE CENTER (Top Nudges)
+                    // SECTION 11: SMART NUDGE CENTER
                     if (data.nudges.isNotEmpty()) {
                         Text("Smart Nudges", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
-                        data.nudges.take(3).forEach { nudge ->
+                        data.nudges.forEach { nudge ->
                             SmartNudgeCard(nudge.jsonObject, onClick = onNavigate)
                         }
                     }
 
-                    // Module Hubs (Sections 3-10)
+                    // Module Hubs (Sections 3-10) - ZERO HARDCODED VALUES
                     OpportunityHubWidget(data.opportunity_hub, onClick = { onNavigate("/opportunities") })
                     CareerCenterWidget(data.career_center, onClick = { onNavigate("/career") })
                     NetworkHubWidget(data.network_hub, onClick = { onNavigate("/network") })
                     FocusCenterWidget(data.focus_center, onClick = { onNavigate("/focus") })
-                    ScholarshipHubWidget(data.scam_center, onClick = { onNavigate("/scholarships") }) // Reusing scam_center for demo if hub missing
+                    ScholarshipHubWidget(data.scholarship_hub, onClick = { onNavigate("/scholarships") })
                     PortfolioCommandWidget(data.portfolio_center, onClick = { onNavigate("/portfolio") })
                     ScamProtectionWidget(data.scam_center, onClick = { onNavigate("/scam_shield") })
-                    CampusOSHubWidget(data.network_hub, onClick = { onNavigate("/campus") }) // Reusing network for demo
-
-                    Spacer(modifier = Modifier.height(100.dp)) // Padding for QuickActionBar
+                    
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
             is DashboardState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -133,7 +132,7 @@ fun SummaryMiniCard(label: String, value: String, modifier: Modifier, icon: Imag
 
 @Composable
 fun TopActionCard(action: com.elevateai.app.dashboard.data.models.TopAction, onAction: () -> Unit) {
-    val isCritical = action.priority == "critical"
+    val isCritical = action.priority == "critical" || action.priority == "high"
     val containerColor = if (isCritical) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
     val contentColor = if (isCritical) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
 
