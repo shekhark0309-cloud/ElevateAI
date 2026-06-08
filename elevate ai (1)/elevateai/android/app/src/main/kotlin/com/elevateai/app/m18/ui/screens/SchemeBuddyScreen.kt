@@ -141,7 +141,7 @@ fun ScholarshipJourneyView(state: com.elevateai.app.m18.ui.viewmodel.Scholarship
                                 Text("TrustScore: ${p["peer_trust_score"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.labelSmall)
                             }
                             Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { onNavigate("/chat?user=${p["peer_id"]?.jsonPrimitive?.content}") }) {
+                            TextButton(onClick = { onNavigate("/chat/${p["peer_id"]?.jsonPrimitive?.content}?name=${p["peer_name"]?.jsonPrimitive?.content}") }) {
                                 Text("ASK HELP")
                             }
                         }

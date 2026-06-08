@@ -27,15 +27,20 @@ fun OSDashboardScreen(
     val state by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { 
+        topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("ELEVATE OS", fontWeight = FontWeight.Black) },
+                navigationIcon = {
+                    IconButton(onClick = { onNavigate("back") }) {
+                        Icon(Icons.Default.ArrowBack, "Back to Flutter")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { onNavigate("/notifications") }) {
                         Icon(Icons.Default.Notifications, "Notifications")
                     }
                 }
-            ) 
+            )
         },
         bottomBar = { QuickActionBar(onAction = onNavigate) }
     ) { padding ->
@@ -67,11 +72,11 @@ fun OSDashboardScreen(
 
                     // Module Hubs (Sections 3-10) - ZERO HARDCODED VALUES
                     OpportunityHubWidget(data.opportunity_hub, onClick = { onNavigate("/opportunities") })
-                    CareerCenterWidget(data.career_center, onClick = { onNavigate("/career") })
-                    NetworkHubWidget(data.network_hub, onClick = { onNavigate("/network") })
-                    FocusCenterWidget(data.focus_center, onClick = { onNavigate("/focus") })
+                    CareerCenterWidget(data.career_center, onClick = { onNavigate("/career_predictor") })
+                    NetworkHubWidget(data.network_hub, onClick = { onNavigate("/team_finder") })
+                    FocusCenterWidget(data.focus_center, onClick = { onNavigate("focus_mode") })
                     ScholarshipHubWidget(data.scholarship_hub, onClick = { onNavigate("scheme_buddy") })
-                    CampusOSHubWidget(data.campus_hub, onClick = { onNavigate("/campus") })
+                    CampusOSHubWidget(data.campus_hub, onClick = { onNavigate("/campus_connect") })
                     CafeteriaHubWidget(data.cafeteria_hub, onClick = { onNavigate("cafeteria") })
                     PortfolioCommandWidget(data.portfolio_center, onClick = { onNavigate("/portfolio") })
                     ScamProtectionWidget(data.scam_center, onClick = { onNavigate("/scam_shield") })

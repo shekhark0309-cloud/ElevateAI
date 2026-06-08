@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           children: [
             IconButton(
-              onPressed: () => NativeNavigationService.openOSDashboard(),
+              onPressed: () => NativeNavigationService.openOSDashboard(context),
               icon: const Icon(Icons.dashboard_customize_outlined, color: Color(0xFF6200EE)),
               tooltip: 'Open OS Command Center',
             ),
@@ -653,7 +653,13 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             child: TextButton(
               onPressed: () {
-                if (nudge.route != null) context.push(nudge.route!);
+                if (nudge.route != null) {
+                   if (nudge.route!.startsWith('/')) {
+                     context.push(nudge.route!);
+                   } else {
+                     NativeNavigationService.openNativeScreen(context, nudge.route!);
+                   }
+                }
               },
               style: TextButton.styleFrom(
                 backgroundColor: nudge.color.withOpacity(0.1),
@@ -692,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           height: 56,
           child: FilledButton(
-            onPressed: () => NativeNavigationService.openFocusMode(),
+            onPressed: () => NativeNavigationService.openFocusMode(context),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF6200EE),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -747,6 +753,9 @@ class _HomeScreenState extends State<HomeScreen> {
             _actionIcon('Skills', Icons.verified_outlined, Colors.blue, '/skill_reality'),
             _actionIcon('ScamShield', Icons.shield_outlined, Colors.red, '/scam_shield'),
             _actionIcon('Sustainability', Icons.eco_outlined, Colors.green, '/sustainability'),
+            _actionIcon('Leaderboard', Icons.leaderboard_outlined, Colors.amber, '/leaderboard'),
+            _actionIcon('Portfolio', Icons.assignment_ind_outlined, Colors.blueGrey, '/portfolio'),
+            _actionIcon('Roles', Icons.work_outline, Colors.orange, '/open_roles'),
           ],
         ),
       ],
@@ -795,47 +804,52 @@ class _HomeScreenState extends State<HomeScreen> {
             o['title'],
             'Deadline: ${o['apply_deadline'].toString().split('T')[0]}',
             o['type'].toString().toUpperCase(),
-            Colors.purple
+            Colors.purple,
+            route: '/opportunities'
           )),
           ...notifications.map((n) => _upcomingItem(
             n['title'],
             n['body'] ?? '',
             'Alert',
-            Colors.red
+            Colors.red,
+            route: '/notifications'
           )),
         ],
       ],
     );
   }
 
-  Widget _upcomingItem(String title, String subtitle, String category, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 40,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
+  Widget _upcomingItem(String title, String subtitle, String category, Color color, {String? route}) {
+    return InkWell(
+      onTap: route != null ? () => context.push(route) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
             ),
-          ),
-          Text(category, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+            Text(category, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+          ],
+        ),
       ),
     );
   }

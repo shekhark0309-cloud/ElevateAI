@@ -535,16 +535,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 children: [
                   Expanded(
                     child: TextButton.icon(
-                      onPressed: () {},
+                      onPressed: () => context.push('/portfolio'),
                       icon: const Icon(Icons.download, size: 18),
-                      label: const Text('Generate PDF'),
+                      label: const Text('Manage Resume'),
                     ),
                   ),
                   Expanded(
                     child: TextButton.icon(
-                      onPressed: () {},
+                      onPressed: () => context.push('/portfolio'),
                       icon: const Icon(Icons.link, size: 18),
-                      label: const Text('Share Link'),
+                      label: const Text('Share Portfolio'),
                     ),
                   ),
                 ],
@@ -630,7 +630,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       width: double.infinity,
       height: 56,
       child: FilledButton.icon(
-        onPressed: () {},
+        onPressed: () => context.push('/portfolio'),
         icon: const Icon(Icons.bolt),
         label: const Text('One-Click Resume', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         style: FilledButton.styleFrom(

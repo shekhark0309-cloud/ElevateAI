@@ -53,9 +53,25 @@ class NativeHostActivity : ComponentActivity() {
 
             val handleNavigation: (String) -> Unit = { target ->
                 when (target) {
+                    "back" -> finish()
                     "dashboard", "scheme_buddy", "focus_mode", "peer_network", "career_predictor", "team_finder", "cafeteria" -> {
                         currentRoute = target
                     }
+                    "/focus" -> currentRoute = "focus_mode"
+                    "/network", "/team_finder" -> currentRoute = "team_finder"
+                    "/career", "/career_predictor" -> currentRoute = "career_predictor"
+                    "/scheme_buddy", "/scholarships" -> currentRoute = "scheme_buddy"
+                    "/scheme_simulator" -> finishWithResult(mapOf("target" to "/scheme_simulator"))
+                    "/opportunities" -> finishWithResult(mapOf("target" to "/opportunities"))
+                    "/profile" -> finishWithResult(mapOf("target" to "/profile"))
+                    "/notifications" -> finishWithResult(mapOf("target" to "/notifications"))
+                    "/portfolio" -> finishWithResult(mapOf("target" to "/portfolio"))
+                    "/scam_shield" -> finishWithResult(mapOf("target" to "/scam_shield"))
+                    "/campus_connect", "/campus" -> finishWithResult(mapOf("target" to "/campus_connect"))
+                    "/leaderboard" -> finishWithResult(mapOf("target" to "/leaderboard"))
+                    "/skill_reality" -> finishWithResult(mapOf("target" to "/skill_reality"))
+                    "/open_roles" -> finishWithResult(mapOf("target" to "/open_roles"))
+                    "/sustainability" -> finishWithResult(mapOf("target" to "/sustainability"))
                     else -> {
                         // Return to Flutter for handling (e.g. /chat, /profile)
                         finishWithResult(mapOf("target" to target))
