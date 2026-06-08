@@ -14,6 +14,7 @@ data class OSDashboardData(
     val focus_center: JsonObject?,
     val scam_center: JsonObject?,
     val scholarship_hub: JsonObject?,
+    val campus_hub: JsonObject?,
     val portfolio_center: JsonObject?,
     val nudges: JsonArray,
     val archetype: String?

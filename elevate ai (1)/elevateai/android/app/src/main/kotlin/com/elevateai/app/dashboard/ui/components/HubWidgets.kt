@@ -79,6 +79,17 @@ fun NetworkHubWidget(data: JsonObject?, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader("TEAM & NETWORK HUB", Icons.Default.Groups)
             Text(text = "Nearby Students: ${data["count"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.bodyMedium)
+            
+            val buddies = data["nearby_buddies"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+            if (buddies > 0) {
+                Text(
+                    text = "🔥 $buddies Buddies studying ${data["trending_subject"]?.jsonPrimitive?.content ?: "now"}", 
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+
             Text(text = "Open Invitations: ${data["invites"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = onClick) { Text("Find Collaborators →") }
         }
@@ -195,8 +206,37 @@ fun CampusOSHubWidget(data: JsonObject?, onClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), onClick = onClick) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader("CAMPUS OS HUB", Icons.Default.School)
-            Text(text = "Labs Open: ${data["labs"]?.jsonPrimitive?.content ?: "Syncing..."}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Study Spaces: ${data["spaces"]?.jsonPrimitive?.content ?: "Syncing..."}", style = MaterialTheme.typography.bodySmall)
+            
+            val booking = data["current_booking"]?.jsonObject
+            if (booking != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Active: ${booking["name"]?.jsonPrimitive?.content} until ${booking["booked_until"]?.jsonPrimitive?.content?.split("T")?.get(1)?.substring(0, 5)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            val rec = data["recommendation"]?.jsonObject
+            if (rec != null) {
+                Text(text = "RECOMMENDED FOR YOU", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(text = "${rec["name"]?.jsonPrimitive?.content} (${rec["location"]?.jsonPrimitive?.content})", style = MaterialTheme.typography.titleSmall)
+                Text(text = "Reason: ${rec["reason"]?.jsonPrimitive?.content}", style = MaterialTheme.typography.bodySmall, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(text = "Labs Open: ${data["labs"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "Seats Available: ${data["spaces"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }
