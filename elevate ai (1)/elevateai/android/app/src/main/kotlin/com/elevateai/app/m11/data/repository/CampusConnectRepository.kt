@@ -64,4 +64,11 @@ class CampusConnectRepository(private val supabase: SupabaseClient) {
                 eq("student_b_id", studentId)
             }
     }
+
+    fun observeResources(collegeId: String): Flow<PostgresAction> {
+        return supabase.realtime.from("campus_resources")
+            .postgresChangeFlow(schema = "public") {
+                eq("college_id", collegeId)
+            }
+    }
 }

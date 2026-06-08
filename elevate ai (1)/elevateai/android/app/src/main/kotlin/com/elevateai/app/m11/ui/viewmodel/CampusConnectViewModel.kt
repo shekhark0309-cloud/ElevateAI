@@ -24,6 +24,7 @@ class CampusConnectViewModel(
 
     init {
         loadDiscovery()
+        listenForRealtime()
     }
 
     fun loadDiscovery(filter: String = "all") {
@@ -38,11 +39,18 @@ class CampusConnectViewModel(
         }
     }
 
+    private fun listenForRealtime() {
+        viewModelScope.launch {
+            repository.observeConnectionRequests(studentId).collect {
+                loadDiscovery()
+            }
+        }
+    }
+
     fun connectWithStudent(targetId: String, type: String) {
         viewModelScope.launch {
             try {
                 repository.manageConnection(targetId, "request", type)
-                // Refresh or update state to show "Pending"
                 loadDiscovery()
             } catch (e: Exception) {
                 // Handle error

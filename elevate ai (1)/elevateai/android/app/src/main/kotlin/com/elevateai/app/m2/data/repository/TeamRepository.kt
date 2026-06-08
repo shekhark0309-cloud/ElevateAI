@@ -46,4 +46,11 @@ class TeamRepository(private val supabase: SupabaseClient) {
                 eq("college_id", collegeId)
             }
     }
+
+    fun observeTeamChanges(studentId: String): Flow<PostgresAction> {
+        return supabase.realtime.from("team_members")
+            .postgresChangeFlow(schema = "public") {
+                eq("student_id", studentId)
+            }
+    }
 }

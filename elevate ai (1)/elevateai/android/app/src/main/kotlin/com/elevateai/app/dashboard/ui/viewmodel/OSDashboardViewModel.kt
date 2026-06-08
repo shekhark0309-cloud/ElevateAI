@@ -43,16 +43,22 @@ class OSDashboardViewModel(
         viewModelScope.launch {
             repository.observeDashboardSignals(studentId).collect {
                 // Refresh dashboard data silently when signals change
-                try {
-                    val data = repository.getOSDashboard(studentId)
-                    _uiState.value = DashboardState.Success(data)
-                } catch (e: Exception) { /* ignore silent error */ }
+                loadDashboardSilently()
             }
         }
         viewModelScope.launch {
             repository.observeDnaChanges(studentId).collect {
                 loadDashboard() // Full reload for DNA archetype shifts
             }
+        }
+    }
+
+    private fun loadDashboardSilently() {
+        viewModelScope.launch {
+            try {
+                val data = repository.getOSDashboard(studentId)
+                _uiState.value = DashboardState.Success(data)
+            } catch (e: Exception) { /* ignore silent error */ }
         }
     }
 }

@@ -117,3 +117,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE trust_scores;
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE team_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE student_dna;
+ALTER PUBLICATION supabase_realtime ADD TABLE opportunity_applications;
+ALTER PUBLICATION supabase_realtime ADD TABLE campus_resources;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE conversations;

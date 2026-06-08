@@ -16,6 +16,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isGeneratingDigest = false;
   String? _errorMessage;
   List<Map<String, dynamic>> _notifications = [];
+  RealtimeChannel? _realtimeChannel;
 
   @override
   void initState() {
@@ -24,10 +25,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _subscribeToRealtime();
   }
 
+  @override
+  void dispose() {
+    _realtimeChannel?.unsubscribe();
+    super.dispose();
+  }
+
   void _subscribeToRealtime() {
     final user = supabase.auth.currentUser;
     if (user != null) {
-      _notificationService.subscribeToNotifications(
+      _realtimeChannel = _notificationService.subscribeToNotifications(
         studentId: user.id,
         onNewNotification: (notif) {
           if (mounted) {

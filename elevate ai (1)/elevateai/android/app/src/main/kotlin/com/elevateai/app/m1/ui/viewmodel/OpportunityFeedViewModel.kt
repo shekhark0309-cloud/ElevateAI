@@ -25,6 +25,7 @@ class OpportunityFeedViewModel(
 
     init {
         loadFeed()
+        listenForRealtime()
     }
 
     fun loadFeed() {
@@ -62,6 +63,14 @@ class OpportunityFeedViewModel(
                 _uiState.value = OpportunityFeedState.Success(sections)
             } catch (e: Exception) {
                 _uiState.value = OpportunityFeedState.Error(e.message ?: "Failed to load feed")
+            }
+        }
+    }
+
+    private fun listenForRealtime() {
+        viewModelScope.launch {
+            repository.observeApplications(studentId).collect {
+                loadFeed()
             }
         }
     }

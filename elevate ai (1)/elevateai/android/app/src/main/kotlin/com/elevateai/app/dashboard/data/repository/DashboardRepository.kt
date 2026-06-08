@@ -6,6 +6,7 @@ import io.github.jan_tennert.supabase.postgrest.postgrest
 import io.github.jan_tennert.supabase.realtime.realtime
 import io.github.jan_tennert.supabase.realtime.PostgresAction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.merge
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -19,11 +20,16 @@ class DashboardRepository(private val supabase: SupabaseClient) {
     }
 
     fun observeDashboardSignals(studentId: String): Flow<PostgresAction> {
-        // Monitor notifications for high-priority changes
-        return supabase.realtime.from("notifications")
-            .postgresChangeFlow(schema = "public") {
-                eq("student_id", studentId)
-            }
+        val notifications = supabase.realtime.from("notifications")
+            .postgresChangeFlow(schema = "public") { eq("student_id", studentId) }
+            
+        val trustScores = supabase.realtime.from("trust_scores")
+            .postgresChangeFlow(schema = "public") { eq("student_id", studentId) }
+            
+        val applications = supabase.realtime.from("opportunity_applications")
+            .postgresChangeFlow(schema = "public") { eq("student_id", studentId) }
+            
+        return merge(notifications, trustScores, applications)
     }
 
     fun observeDnaChanges(studentId: String): Flow<PostgresAction> {
