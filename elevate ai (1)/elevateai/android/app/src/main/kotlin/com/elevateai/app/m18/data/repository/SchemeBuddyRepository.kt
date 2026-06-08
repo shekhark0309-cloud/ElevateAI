@@ -2,12 +2,8 @@ package com.elevateai.app.m18.data.repository
 
 import io.github.jan_tennert.supabase.SupabaseClient
 import io.github.jan_tennert.supabase.functions.functions
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
+import io.github.jan_tennert.supabase.postgrest.postgrest
+import kotlinx.serialization.json.*
 
 class SchemeBuddyRepository(private val supabase: SupabaseClient) {
 
@@ -27,5 +23,25 @@ class SchemeBuddyRepository(private val supabase: SupabaseClient) {
             }
         )
         return response.decodeAs<JsonObject>()
+    }
+
+    suspend fun getSchemePath(studentId: String, opportunityId: String): JsonObject {
+        return supabase.postgrest.rpc(
+            "get_scheme_path",
+            buildJsonObject {
+                put("p_student_id", studentId)
+                put("p_opportunity_id", opportunityId)
+            }
+        ).decodeAs()
+    }
+
+    suspend fun getPeerSuccessStories(studentId: String, opportunityId: String): JsonArray {
+        return supabase.postgrest.rpc(
+            "get_peer_success_stories",
+            buildJsonObject {
+                put("p_student_id", studentId)
+                put("p_opportunity_id", opportunityId)
+            }
+        ).decodeAs()
     }
 }

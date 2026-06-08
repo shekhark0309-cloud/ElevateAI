@@ -16,6 +16,13 @@ sealed class ChatState {
     data class Error(val message: String) : ChatState()
 }
 
+data class ScholarshipJourneyState(
+    val path: JsonObject? = null,
+    val peers: JsonArray? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 class SchemeBuddyViewModel(
     private val repository: SchemeBuddyRepository,
     private val studentId: String
@@ -31,6 +38,9 @@ class SchemeBuddyViewModel(
 
     private val _selectedLanguage = MutableStateFlow("auto")
     val selectedLanguage: StateFlow<String> = _selectedLanguage
+
+    private val _journeyState = MutableStateFlow(ScholarshipJourneyState())
+    val journeyState: StateFlow<ScholarshipJourneyState> = _journeyState
 
     fun setLanguage(lang: String) {
         _selectedLanguage.value = lang
@@ -64,6 +74,19 @@ class SchemeBuddyViewModel(
                 _chatState.value = ChatState.Idle
             } catch (e: Exception) {
                 _chatState.value = ChatState.Error(e.message ?: "Failed to get reply")
+            }
+        }
+    }
+
+    fun loadScholarshipJourney(opportunityId: String) {
+        viewModelScope.launch {
+            _journeyState.value = _journeyState.value.copy(isLoading = true, error = null)
+            try {
+                val path = repository.getSchemePath(studentId, opportunityId)
+                val peers = repository.getPeerSuccessStories(studentId, opportunityId)
+                _journeyState.value = ScholarshipJourneyState(path = path, peers = peers, isLoading = false)
+            } catch (e: Exception) {
+                _journeyState.value = ScholarshipJourneyState(error = e.message, isLoading = false)
             }
         }
     }

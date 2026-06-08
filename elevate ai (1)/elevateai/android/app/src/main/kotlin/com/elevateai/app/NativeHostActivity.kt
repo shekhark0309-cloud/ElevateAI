@@ -1,10 +1,12 @@
 package com.elevateai.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elevateai.app.dashboard.ui.screens.OSDashboardScreen
 import com.elevateai.app.dashboard.ui.viewmodel.OSDashboardViewModel
@@ -21,6 +23,9 @@ import com.elevateai.app.m7.data.repository.CareerRepository
 import com.elevateai.app.m2.ui.screens.TeamFinderScreen
 import com.elevateai.app.m2.ui.viewmodel.TeamFinderViewModel
 import com.elevateai.app.m2.data.repository.TeamRepository
+import com.elevateai.app.m18.ui.screens.SchemeBuddyScreen
+import com.elevateai.app.m18.ui.viewmodel.SchemeBuddyViewModel
+import com.elevateai.app.m18.data.repository.SchemeBuddyRepository
 import io.github.jan_tennert.supabase.gotrue.gotrue
 import kotlinx.coroutines.runBlocking
 
@@ -28,7 +33,7 @@ class NativeHostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val route = intent.getStringExtra("route") ?: "dashboard"
+        val initialRoute = intent.getStringExtra("route") ?: "dashboard"
         val sessionJson = intent.getStringExtra("session")
 
         // Sync session before rendering
@@ -40,13 +45,32 @@ class NativeHostActivity : ComponentActivity() {
         val studentId = supabase.gotrue.currentSessionOrNull()?.user?.id ?: ""
 
         setContent {
+            var currentRoute by remember { mutableStateOf(initialRoute) }
+
+            val handleNavigation: (String) -> Unit = { target ->
+                when (target) {
+                    "dashboard", "scheme_buddy", "focus_mode", "peer_network", "career_predictor", "team_finder" -> {
+                        currentRoute = target
+                    }
+                    else -> {
+                        // Return to Flutter for handling (e.g. /chat, /profile)
+                        finishWithResult(mapOf("target" to target))
+                    }
+                }
+            }
+
             MaterialTheme {
                 Surface {
-                    when (route) {
+                    when (currentRoute) {
                         "dashboard" -> {
                             val repository = DashboardRepository(supabase)
                             val vm: OSDashboardViewModel = viewModel { OSDashboardViewModel(repository, studentId) }
-                            OSDashboardScreen(vm, onNavigate = { /* Handle native-to-native or native-to-flutter */ })
+                            OSDashboardScreen(vm, onNavigate = handleNavigation)
+                        }
+                        "scheme_buddy" -> {
+                            val repository = SchemeBuddyRepository(supabase)
+                            val vm: SchemeBuddyViewModel = viewModel { SchemeBuddyViewModel(repository, studentId) }
+                            SchemeBuddyScreen(vm, onNavigate = handleNavigation)
                         }
                         "focus_mode" -> {
                             val repository = FocusRepository(supabase)

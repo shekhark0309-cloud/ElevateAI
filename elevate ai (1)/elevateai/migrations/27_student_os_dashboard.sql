@@ -203,7 +203,11 @@ BEGIN
     'network_hub', v_network,
     'focus_center', v_focus,
     'scam_center', v_scam,
-    'scholarship_hub', jsonb_build_object('matches', v_matching_schemes, 'deadline', (SELECT apply_deadline FROM opportunities WHERE type = 'scholarship' AND status = 'active' ORDER BY apply_deadline ASC LIMIT 1)),
+    'scholarship_hub', jsonb_build_object(
+       'matches', v_matching_schemes,
+       'deadline', (SELECT apply_deadline FROM opportunities WHERE type = 'scholarship' AND status = 'active' ORDER BY apply_deadline ASC LIMIT 1),
+       'mentors', (SELECT COUNT(DISTINCT student_id) FROM opportunity_applications WHERE opportunity_id IN (SELECT id FROM opportunities WHERE type = 'scholarship') AND status = 'accepted')
+    ),
     'portfolio_center', jsonb_build_object(
        'completion', (SELECT COUNT(*) FROM student_projects WHERE student_id = p_student_id) * 25,
        'verified_count', (SELECT COUNT(*) FROM student_skills WHERE student_id = p_student_id AND is_verified = TRUE)

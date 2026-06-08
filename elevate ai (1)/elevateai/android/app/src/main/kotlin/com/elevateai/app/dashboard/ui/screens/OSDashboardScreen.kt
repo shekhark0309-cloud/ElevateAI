@@ -70,7 +70,7 @@ fun OSDashboardScreen(
                     CareerCenterWidget(data.career_center, onClick = { onNavigate("/career") })
                     NetworkHubWidget(data.network_hub, onClick = { onNavigate("/network") })
                     FocusCenterWidget(data.focus_center, onClick = { onNavigate("/focus") })
-                    ScholarshipHubWidget(data.scholarship_hub, onClick = { onNavigate("/scholarships") })
+                    ScholarshipHubWidget(data.scholarship_hub, onClick = { onNavigate("scheme_buddy") })
                     PortfolioCommandWidget(data.portfolio_center, onClick = { onNavigate("/portfolio") })
                     ScamProtectionWidget(data.scam_center, onClick = { onNavigate("/scam_shield") })
                     

@@ -30,6 +30,7 @@ class NativeNavigationService {
   static Future<void> openFocusMode() => openNativeScreen('focus_mode');
   static Future<void> openPeerNetwork() => openNativeScreen('peer_network');
   static Future<void> openOSDashboard() => openNativeScreen('dashboard');
+  static Future<void> openSchemeBuddy() => openNativeScreen('scheme_buddy');
   static Future<void> openCareerPredictor() => openNativeScreen('career_predictor');
   static Future<void> openTeamFinder() => openNativeScreen('team_finder');
 }

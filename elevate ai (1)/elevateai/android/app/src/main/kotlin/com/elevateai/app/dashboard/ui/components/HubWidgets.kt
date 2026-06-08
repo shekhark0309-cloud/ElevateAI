@@ -108,6 +108,12 @@ fun ScholarshipHubWidget(data: JsonObject?, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader("SCHOLARSHIP & GOVT HUB", Icons.Default.AccountBalance)
             Text(text = "Eligible Schemes: ${data["matches"]?.jsonPrimitive?.content ?: "0"}", style = MaterialTheme.typography.bodyMedium)
+            
+            val mentorCount = data["mentors"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+            if (mentorCount > 0) {
+                Text(text = "🌟 $mentorCount Peer Mentors Available", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+            }
+
             data["deadline"]?.jsonPrimitive?.content?.let {
                 Text(text = "Next Deadline: $it", color = MaterialTheme.colorScheme.error)
             }
