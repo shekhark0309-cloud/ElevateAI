@@ -67,9 +67,17 @@ BEGIN
   );
 
   -- 6. Hub Data
-  -- Opportunity Hub
-  SELECT jsonb_build_object('id', id, 'title', title, 'match', 85) INTO v_opp
-  FROM v_active_opportunities LIMIT 1;
+  -- Opportunity Hub (REAL Match Score & Reason - Task 1 & 6)
+  SELECT jsonb_build_object(
+    'id', o.id,
+    'title', o.title,
+    'match', ROUND(ro.match_score + ro.urgency_boost),
+    'reason', ro.match_reason
+  )
+  INTO v_opp FROM opportunities o
+  JOIN get_ranked_opportunities(p_student_id) ro ON ro.opportunity_id = o.id
+  WHERE ro.eligibility_match = TRUE
+  ORDER BY ro.match_score + ro.urgency_boost DESC LIMIT 1;
 
   -- Career Center
   v_career := jsonb_build_object(

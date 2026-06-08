@@ -19,8 +19,15 @@ class DashboardRepository(private val supabase: SupabaseClient) {
     }
 
     fun observeDashboardSignals(studentId: String): Flow<PostgresAction> {
-        // Monitor notifications and trust scores for realtime dashboard updates
+        // Monitor notifications for high-priority changes
         return supabase.realtime.from("notifications")
+            .postgresChangeFlow(schema = "public") {
+                eq("student_id", studentId)
+            }
+    }
+
+    fun observeDnaChanges(studentId: String): Flow<PostgresAction> {
+        return supabase.realtime.from("student_dna")
             .postgresChangeFlow(schema = "public") {
                 eq("student_id", studentId)
             }

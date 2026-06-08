@@ -49,5 +49,10 @@ class OSDashboardViewModel(
                 } catch (e: Exception) { /* ignore silent error */ }
             }
         }
+        viewModelScope.launch {
+            repository.observeDnaChanges(studentId).collect {
+                loadDashboard() // Full reload for DNA archetype shifts
+            }
+        }
     }
 }
