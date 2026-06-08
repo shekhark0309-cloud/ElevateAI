@@ -159,4 +159,7 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION get_student_discovery_feed TO authenticated;
-GRANT EXECUTE ON FUNCTION manage_campus_connection TO authenticated;
+-- 5. M18: Scheme Buddy Enhancements
+ALTER TABLE student_dna
+  ADD COLUMN IF NOT EXISTS preferred_language TEXT DEFAULT 'auto';
+

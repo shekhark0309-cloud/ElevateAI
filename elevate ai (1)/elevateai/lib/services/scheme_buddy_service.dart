@@ -53,7 +53,7 @@ class SchemeBuddyService {
   Future<String> chat({
     required String studentId,
     required String message,
-    String language = 'hindi',
+    String language = 'auto',
   }) async {
     final response = await _supabase.functions.invoke(
       'scheme-buddy-chat',
@@ -69,10 +69,38 @@ class SchemeBuddyService {
     }
     final data = response.data as Map<String, dynamic>;
     final reply = data['reply'] as String;
+
+    // Add to history for context retention
     _conversationHistory.add({'role': 'user', 'content': message});
     _conversationHistory.add({'role': 'assistant', 'content': reply});
+
+    // Keep history manageable
+    if (_conversationHistory.length > 20) {
+      _conversationHistory.removeRange(0, 2);
+    }
+
     return reply;
   }
 
-  void clearHistory() => _conversationHistory.clear();
+  Future<void> updatePreferredLanguage(String language) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _supabase.from('student_dna').update({
+      'preferred_language': language,
+    }).eq('student_id', userId);
+  }
+
+  Future<String> getPreferredLanguage() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return 'auto';
+
+    final response = await _supabase.from('student_dna')
+        .select('preferred_language')
+        .eq('student_id', userId)
+        .maybeSingle();
+
+    return response?['preferred_language'] as String? ?? 'auto';
+  }
 }
+
