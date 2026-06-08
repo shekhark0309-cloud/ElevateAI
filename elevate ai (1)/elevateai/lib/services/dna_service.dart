@@ -14,7 +14,7 @@ class DNAService {
       throw Exception('DNA recalculation failed');
     }
 
-    return StudentDNA.fromJson(response.data as Map<String, dynamic>);
+    return StudentDNA.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 
   Future<Map<String, String>> getArchetype(String studentId) async {
@@ -54,6 +54,6 @@ class DNAService {
       body: {'student_id': studentId},
     );
     if (response.status != 200) throw Exception('Career gap analysis failed');
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 }

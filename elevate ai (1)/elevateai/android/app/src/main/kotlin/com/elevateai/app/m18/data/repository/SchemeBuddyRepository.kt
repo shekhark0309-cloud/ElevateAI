@@ -22,7 +22,8 @@ class SchemeBuddyRepository(private val supabase: SupabaseClient) {
                 put("conversation_history", history)
             }
         )
-        return response.decodeAs<JsonObject>()
+        val body = response.decodeAs<JsonObject>()
+        return body["data"]?.jsonObject ?: body
     }
 
     suspend fun getSchemePath(studentId: String, opportunityId: String): JsonObject {

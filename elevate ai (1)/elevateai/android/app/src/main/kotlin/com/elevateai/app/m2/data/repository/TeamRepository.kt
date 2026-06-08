@@ -19,8 +19,9 @@ class TeamRepository(private val supabase: SupabaseClient) {
             "match-teams",
             buildJsonObject { put("student_id", studentId) }
         )
-        // match-teams returns { matches: [...] }
-        val matchesJson = response.decodeAs<JsonObject>()["matches"]?.jsonArray ?: return emptyList()
+        val body = response.decodeAs<JsonObject>()
+        val data = body["data"]?.jsonObject ?: return emptyList()
+        val matchesJson = data["matches"]?.jsonArray ?: return emptyList()
         return matchesJson.map { Json.decodeFromJsonElement<TeamMatch>(it) }
     }
 

@@ -37,7 +37,7 @@ class ERPService {
     // Notify listeners that sync is complete
     _syncController.add(null);
 
-    return erpResponse.data as Map<String, dynamic>;
+    return erpResponse.data['data'] as Map<String, dynamic>;
   }
 
   Future<DateTime?> getLastSyncTimestamp(String studentId) async {

@@ -20,7 +20,7 @@ class OpportunityService {
     if (response.status != 200) {
       throw Exception('Opportunity ranking failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> applyToOpportunity({
@@ -76,6 +76,6 @@ class OpportunityService {
     if (response.status != 200) {
       throw Exception('Scam detection failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 }

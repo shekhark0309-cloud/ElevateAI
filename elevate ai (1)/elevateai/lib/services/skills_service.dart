@@ -66,6 +66,6 @@ class SkillsService {
     if (response.status != 200) {
       throw Exception('Portfolio generation failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 }

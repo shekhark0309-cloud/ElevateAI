@@ -20,7 +20,7 @@ class TeamService {
     if (response.status != 200) {
       throw Exception('Team matching failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> createTeam({
@@ -80,7 +80,7 @@ class TeamService {
     if (response.status != 200) {
       throw Exception('Team analysis failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 
   RealtimeChannel subscribeToTeam({

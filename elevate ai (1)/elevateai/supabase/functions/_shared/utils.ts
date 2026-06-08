@@ -226,12 +226,12 @@ export interface AIMessage {
  * Calls AI with fallback logic.
  * Models used: Claude 3.5 Sonnet (Primary), GPT-4o (Fallback)
  */
-export async function callAI(
+export function callAI(
   messages: AIMessage[],
   systemPrompt: string,
   maxTokens = 1000
 ): Promise<string> {
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
 
   if (anthropicKey) {
     try {
@@ -257,6 +257,33 @@ export async function callAI(
       console.warn("Anthropic API error, trying fallback:", await response.text());
     } catch (e) {
       console.warn("Anthropic fetch failed, trying fallback:", e);
+    }
+  }
+
+  // Fallback: Gemini (Google)
+  const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
+  if (geminiKey) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: { text: systemPrompt } },
+          contents: messages.map(m => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }]
+          })),
+          generationConfig: { maxOutputTokens: maxTokens }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+      }
+      console.warn("Gemini API error, trying fallback:", await response.text());
+    } catch (e) {
+      console.warn("Gemini fetch failed, trying fallback:", e);
     }
   }
 

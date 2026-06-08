@@ -18,7 +18,8 @@ class OpportunityRepository(private val supabase: SupabaseClient) {
                 put("limit", 40)
             }
         )
-        val data = response.decodeAs<JsonObject>()
+        val body = response.decodeAs<JsonObject>()
+        val data = body["data"]?.jsonObject ?: return emptyList()
         val list = data["opportunities"]?.jsonArray ?: return emptyList()
         
         return list.map { Json.decodeFromJsonElement<RankedOpportunity>(it) }

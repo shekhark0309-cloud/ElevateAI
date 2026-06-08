@@ -62,7 +62,7 @@ class InnovationService {
     if (response.status != 200) {
       throw Exception('Idea analysis failed');
     }
-    return response.data as Map<String, dynamic>;
+    return response.data['data'] as Map<String, dynamic>;
   }
 
   Future<ProjectIdea> createIdea(ProjectIdea idea) async {

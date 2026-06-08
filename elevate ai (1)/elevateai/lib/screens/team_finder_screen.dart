@@ -44,7 +44,7 @@ class _TeamFinderScreenState extends State<TeamFinderScreen> {
         if (mounted) {
           setState(() {
             _myTeams = List<Map<String, dynamic>>.from(data);
-            _recommendedTeams = List<Map<String, dynamic>>.from(recommended['data']['matches'] ?? []);
+            _recommendedTeams = List<Map<String, dynamic>>.from(recommended['matches'] ?? []);
             _isLoading = false;
           });
         }

@@ -32,7 +32,7 @@ class SchemeBuddyService {
       return EligibilityResult(eligible: false, missingCriteria: ['System error checking eligibility.']);
     }
 
-    final data = response.data as Map<String, dynamic>;
+    final data = response.data['data'] as Map<String, dynamic>;
     return EligibilityResult(
       eligible: data['eligible'] as bool,
       missingCriteria: List<String>.from(data['missing_criteria'] ?? []),
@@ -46,7 +46,7 @@ class SchemeBuddyService {
 
     if (response.status != 200) return [];
 
-    final data = response.data as List;
+    final data = response.data['data'] as List;
     return data.map((json) => Scheme.fromJson(json)).toList();
   }
 
@@ -67,7 +67,7 @@ class SchemeBuddyService {
     if (response.status != 200) {
       throw Exception('Chatbot error: ${response.data}');
     }
-    final data = response.data as Map<String, dynamic>;
+    final data = response.data['data'] as Map<String, dynamic>;
     final reply = data['reply'] as String;
 
     // Add to history for context retention

@@ -28,7 +28,7 @@ class _OpportunityFeedScreenState extends State<OpportunityFeedScreen> {
         final res = await _oppService.getRankedOpportunities(studentId: user.id);
         if (mounted) {
           setState(() {
-            _opportunities = List<Map<String, dynamic>>.from(res['data']['opportunities'] ?? []);
+            _opportunities = List<Map<String, dynamic>>.from(res['opportunities'] ?? []);
             _isLoading = false;
           });
         }

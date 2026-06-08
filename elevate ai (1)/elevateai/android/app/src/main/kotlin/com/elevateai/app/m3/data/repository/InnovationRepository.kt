@@ -50,7 +50,8 @@ class InnovationRepository(private val supabase: SupabaseClient) {
                 put("solution", solution)
             }
         )
-        return response.decodeAs()
+        val body = response.decodeAs<JsonObject>()
+        return Json.decodeFromJsonElement(body["data"]!!)
     }
 
     suspend fun joinIdea(ideaId: String, studentId: String) {

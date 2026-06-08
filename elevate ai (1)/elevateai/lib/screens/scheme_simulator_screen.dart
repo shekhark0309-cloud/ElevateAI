@@ -55,7 +55,7 @@ class _SchemeSimulatorScreenState extends State<SchemeSimulatorScreen> {
         );
         if (mounted) {
           setState(() {
-            _schemes = List<Map<String, dynamic>>.from(res['data']['opportunities'] ?? []);
+            _schemes = List<Map<String, dynamic>>.from(res['opportunities'] ?? []);
             _isLoading = false;
           });
         }

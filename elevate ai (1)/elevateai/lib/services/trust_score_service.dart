@@ -48,7 +48,7 @@ class TrustScoreService {
       });
     }
 
-    final data = response.data as Map<String, dynamic>;
+    final data = response.data['data'] as Map<String, dynamic>;
     return TrustScoreBreakdown(explanations: Map<String, String>.from(data['explanations']));
   }
 
