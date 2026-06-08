@@ -244,6 +244,11 @@ BEGIN
        'recommendation', v_resource_rec,
        'current_booking', (SELECT row_to_json(b) FROM (SELECT r.name, rb.booked_until FROM resource_bookings rb JOIN campus_resources r ON r.id = rb.resource_id WHERE rb.student_id = p_student_id AND rb.status = 'active' AND rb.booked_until > NOW() ORDER BY rb.booked_from ASC LIMIT 1) b)
     ),
+    'cafeteria_hub', jsonb_build_object(
+       'next_meal', 'Lunch',
+       'is_skipped', EXISTS (SELECT 1 FROM meal_preferences WHERE student_id = p_student_id AND opt_in_lunch = FALSE),
+       'saved', (SELECT (personal_impact->>'food_saved_kg')::NUMERIC FROM get_student_sustainability_impact(p_student_id))
+    ),
     'scam_center', jsonb_build_object('count', (SELECT COUNT(*) FROM scam_reports WHERE created_at > NOW() - INTERVAL '7 days')),
     'scholarship_hub', jsonb_build_object(
        'matches', v_matching_schemes,
@@ -263,3 +268,40 @@ $$;
 GRANT EXECUTE ON FUNCTION get_nearby_buddy_stats TO authenticated;
 GRANT EXECUTE ON FUNCTION get_resource_recommendation TO authenticated;
 GRANT EXECUTE ON FUNCTION get_student_os_dashboard TO authenticated;
+
+-- 4. Notification Trigger for Sustainability Milestones (Task 7)
+CREATE OR REPLACE FUNCTION notify_sustainability_milestone()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_impact JSONB;
+  v_meals_saved INTEGER;
+BEGIN
+  v_impact := get_student_sustainability_impact(NEW.student_id);
+  v_meals_saved := (v_impact->'personal_impact'->>'meals_saved')::INTEGER;
+
+  IF v_meals_saved % 10 = 0 AND v_meals_saved > 0 THEN
+    INSERT INTO notifications (student_id, type, title, body, data, priority, urgency)
+    VALUES (
+      NEW.student_id,
+      'sustainability_milestone',
+      '🌱 Sustainability Milestone!',
+      'You just saved your ' || v_meals_saved || 'th meal! Your campus thanks you.',
+      jsonb_build_object('meals_saved', v_meals_saved, 'route', 'cafeteria'),
+      'medium',
+      5
+    );
+
+    -- Boost TrustScore for community responsibility (Task 7)
+    UPDATE trust_scores SET
+      reliability_score = LEAST(100, reliability_score + 1.0),
+      last_calculated = NOW()
+    WHERE student_id = NEW.student_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER on_meal_pref_update
+  AFTER UPDATE ON meal_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_sustainability_milestone();

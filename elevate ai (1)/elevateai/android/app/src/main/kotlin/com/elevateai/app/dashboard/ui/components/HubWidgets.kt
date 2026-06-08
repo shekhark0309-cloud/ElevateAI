@@ -242,6 +242,36 @@ fun CampusOSHubWidget(data: JsonObject?, onClick: () -> Unit) {
 }
 
 @Composable
+fun CafeteriaHubWidget(data: JsonObject?, onClick: () -> Unit) {
+    if (data == null) return
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        onClick = onClick
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            SectionHeader("DINING & SUSTAINABILITY", Icons.Default.Restaurant)
+            
+            val nextMeal = data["next_meal"]?.jsonPrimitive?.content ?: "Lunch"
+            val status = if (data["is_skipped"]?.jsonPrimitive?.boolean == true) "SKIPPED" else "OPTED-IN"
+            val statusColor = if (data["is_skipped"]?.jsonPrimitive?.boolean == true) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text(text = "Next: $nextMeal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text = status, color = statusColor, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(text = "${data["saved"]?.jsonPrimitive?.content ?: "0"} kg", style = MaterialTheme.typography.titleMedium, color = Color(0xFF2E7D32))
+                    Text(text = "Food Saved", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            
+            TextButton(onClick = onClick) { Text("Manage Meals →") }
+        }
+    }
+}
+
+@Composable
 fun SmartNudgeCard(nudge: JsonObject, onClick: (String) -> Unit) {
     val type = nudge["type"]?.jsonPrimitive?.content ?: "info"
     val color = when(type) {

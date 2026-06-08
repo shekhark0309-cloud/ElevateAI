@@ -29,6 +29,10 @@ import com.elevateai.app.m18.data.repository.SchemeBuddyRepository
 import io.github.jan_tennert.supabase.gotrue.gotrue
 import kotlinx.coroutines.runBlocking
 
+import com.elevateai.app.m13.ui.screens.CafeteriaScreen
+import com.elevateai.app.m13.ui.viewmodel.CafeteriaViewModel
+import com.elevateai.app.m13.data.repository.CafeteriaRepository
+
 class NativeHostActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +53,7 @@ class NativeHostActivity : ComponentActivity() {
 
             val handleNavigation: (String) -> Unit = { target ->
                 when (target) {
-                    "dashboard", "scheme_buddy", "focus_mode", "peer_network", "career_predictor", "team_finder" -> {
+                    "dashboard", "scheme_buddy", "focus_mode", "peer_network", "career_predictor", "team_finder", "cafeteria" -> {
                         currentRoute = target
                     }
                     else -> {
@@ -66,6 +70,11 @@ class NativeHostActivity : ComponentActivity() {
                             val repository = DashboardRepository(supabase)
                             val vm: OSDashboardViewModel = viewModel { OSDashboardViewModel(repository, studentId) }
                             OSDashboardScreen(vm, onNavigate = handleNavigation)
+                        }
+                        "cafeteria" -> {
+                            val repository = CafeteriaRepository(supabase)
+                            val vm: CafeteriaViewModel = viewModel { CafeteriaViewModel(repository, studentId) }
+                            CafeteriaScreen(vm)
                         }
                         "scheme_buddy" -> {
                             val repository = SchemeBuddyRepository(supabase)

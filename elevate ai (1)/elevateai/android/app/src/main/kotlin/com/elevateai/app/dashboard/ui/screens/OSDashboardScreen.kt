@@ -72,6 +72,7 @@ fun OSDashboardScreen(
                     FocusCenterWidget(data.focus_center, onClick = { onNavigate("/focus") })
                     ScholarshipHubWidget(data.scholarship_hub, onClick = { onNavigate("scheme_buddy") })
                     CampusOSHubWidget(data.campus_hub, onClick = { onNavigate("/campus") })
+                    CafeteriaHubWidget(data.cafeteria_hub, onClick = { onNavigate("cafeteria") })
                     PortfolioCommandWidget(data.portfolio_center, onClick = { onNavigate("/portfolio") })
                     ScamProtectionWidget(data.scam_center, onClick = { onNavigate("/scam_shield") })
                     
