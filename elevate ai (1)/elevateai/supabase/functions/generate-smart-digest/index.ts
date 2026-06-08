@@ -41,7 +41,13 @@ serve(async (req) => {
     // 2. Fetch Context
     const { data: dna } = await supabase
       .from("student_dna")
-      .select("study_streak, focus_score, archetype, goals_short_term")
+      .select("study_streak, focus_score, archetype, goals_short_term, placement_score, skill_gaps")
+      .eq("student_id", student_id)
+      .single();
+
+    const { data: trust } = await supabase
+      .from("trust_scores")
+      .select("overall_score, tier, reliability_score")
       .eq("student_id", student_id)
       .single();
 
@@ -49,7 +55,7 @@ serve(async (req) => {
       .from("opportunity_applications")
       .select("opportunities(title, apply_deadline)")
       .eq("student_id", student_id)
-      .in("status", ["submitted", "under_review"]);
+      .in("status", ["submitted", "under_review", "draft"]);
 
     const upcoming = deadlines
       ?.map((d: any) => d.opportunities)
@@ -68,7 +74,11 @@ serve(async (req) => {
         study_streak: dna?.study_streak,
         focus_score: dna?.focus_score,
         archetype: dna?.archetype,
-        top_goal: dna?.goals_short_term?.[0],
+        placement_score: dna?.placement_score,
+        top_gap: dna?.skill_gaps?.[0]?.skill,
+        trust_score: trust?.overall_score,
+        trust_tier: trust?.tier,
+        reliability: trust?.reliability_score
       },
     })}
 
@@ -78,11 +88,11 @@ Return EXACTLY this JSON:
   "important": [{ "id": "...", "title": "...", "body": "..." }],
   "low_notification_ids": ["id1", "id2"],
   "low_summary": "One sentence summarising the low-priority items",
-  "nudge": "One warm, specific motivational line tailored to their archetype and current streak"
+  "nudge": "One warm, specific motivational line tailored to their archetype, goals, and current placement score"
 }
 
-CRITICAL = deadline <24h, badge earned, team invite, scam alert
-IMPORTANT = deadline 2-7 days, new opportunity match, TrustScore change
+CRITICAL = deadline <24h, scam alert, TrustScore drop, streak at risk
+IMPORTANT = deadline 2-7 days, new opportunity match, skill gap identified, team invite
 LOW = everything else`;
 
     let aiResult;

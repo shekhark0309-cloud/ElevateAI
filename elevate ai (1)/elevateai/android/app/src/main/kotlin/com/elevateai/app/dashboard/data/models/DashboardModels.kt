@@ -51,5 +51,6 @@ data class DashboardSummary(
 data class TopAction(
     val label: String,
     val action: String,
-    val priority: String
+    val priority: String,
+    val reason: String? = null
 )

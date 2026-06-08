@@ -99,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 20),
                 _buildHeader(),
                 const SizedBox(height: 24),
+                _buildTopActionCard(),
+                const SizedBox(height: 24),
                 _buildTrustScoreCard(),
                 const SizedBox(height: 24),
                 _buildERPSyncCard(),
@@ -120,6 +122,65 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopActionCard() {
+    final action = _data?['top_action'];
+    if (action == null) return const SizedBox.shrink();
+
+    final priority = action['priority'] as String? ?? 'low';
+    final color = priority == 'critical'
+        ? Colors.red
+        : (priority == 'high' ? Colors.orange : Colors.indigo);
+
+    return InkWell(
+      onTap: () => context.push(action['action']),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withOpacity(0.2), width: 2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(
+                priority == 'critical' ? Icons.bolt : Icons.auto_awesome_outlined,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'RECOMMENDED NEXT STEP',
+                    style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    action['label'] ?? 'Keep Building Your DNA',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  if (action['reason'] != null)
+                    Text(
+                      action['reason'],
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: color),
+          ],
         ),
       ),
     );
