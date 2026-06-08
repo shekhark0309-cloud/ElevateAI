@@ -89,6 +89,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             const SizedBox(height: 24),
             _buildReliabilityIntelligence(trustScore ?? 0.0),
             const SizedBox(height: 24),
+            _buildAcademicSnapshot(),
+            const SizedBox(height: 24),
             _buildVerificationBanner(),
             const SizedBox(height: 32),
             _buildSkillsSection(),
@@ -229,6 +231,100 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       case 'blue': return Colors.blue;
       case 'orange': return Colors.orange;
       default: return Colors.grey;
+    }
+  }
+
+  Widget _buildAcademicSnapshot() {
+    final isSynced = _profileData?['erp_synced'] ?? false;
+    if (!isSynced) {
+      if (widget.studentId != null && widget.studentId != supabase.auth.currentUser?.id) {
+        return const SizedBox.shrink();
+      }
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(20)),
+        child: Column(
+          children: [
+            const Icon(Icons.account_balance_outlined, color: Colors.grey, size: 32),
+            const SizedBox(height: 12),
+            const Text('Academic Record Not Linked', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Link your college ERP to verify your CGPA.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _syncERP, child: const Text('Sync with College')),
+          ],
+        ),
+      );
+    }
+
+    final cgpa = _profileData?['cgpa'] ?? 0.0;
+    final progress = _profileData?['erp_course_progress'] ?? 0.0;
+    final backlogs = _profileData?['erp_backlogs'] ?? 0;
+    final credits = _profileData?['erp_credits_completed'] ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Academic Snapshot', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _acadTile('CGPA', cgpa.toString(), Icons.grade, Colors.blue)),
+            const SizedBox(width: 12),
+            Expanded(child: _acadTile('Progress', '$progress%', Icons.trending_up, Colors.green)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _acadTile('Credits', credits.toString(), Icons.assignment_turned_in, Colors.purple)),
+            const SizedBox(width: 12),
+            Expanded(child: _acadTile('Backlogs', backlogs.toString(), Icons.warning_amber, backlogs > 0 ? Colors.red : Colors.grey)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _acadTile(String label, String val, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: color.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(val, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _syncERP() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final erpService = ERPService();
+      await erpService.syncCollegeRecords(user.id, _profileData?['college_id'] ?? 'c1000000-0000-0000-0000-000000000001');
+      if (mounted) {
+        Navigator.pop(context);
+        _loadProfile();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Academic records updated!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 

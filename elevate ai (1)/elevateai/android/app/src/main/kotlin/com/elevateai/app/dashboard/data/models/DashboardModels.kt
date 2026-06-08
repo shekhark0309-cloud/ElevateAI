@@ -18,7 +18,21 @@ data class OSDashboardData(
     val cafeteria_hub: JsonObject?,
     val portfolio_center: JsonObject?,
     val nudges: JsonArray,
-    val archetype: String?
+    val archetype: String?,
+    val academic_snapshot: AcademicSnapshot?
+)
+
+@Serializable
+data class AcademicSnapshot(
+    val synced: Boolean,
+    val attendance: Double,
+    val cgpa: Double,
+    val progress: Double,
+    val credits: Int,
+    val backlogs: Int,
+    val reliability: Double,
+    val consistency: Double,
+    val last_sync: String?
 )
 
 @Serializable

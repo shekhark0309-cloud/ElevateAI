@@ -6,6 +6,9 @@ class TrustScore {
   final double integrity;
   final double skillValidation;
   final double community;
+  final double academicReliability;
+  final double academicConsistency;
+  final DateTime? erpSyncedAt;
 
   // Aliases for UI consistency if needed
   double get credibility => community;
@@ -20,6 +23,9 @@ class TrustScore {
     required this.integrity,
     required this.skillValidation,
     required this.community,
+    this.academicReliability = 0.0,
+    this.academicConsistency = 0.0,
+    this.erpSyncedAt,
   });
 
   factory TrustScore.fromJson(Map<String, dynamic> json) {
@@ -31,6 +37,9 @@ class TrustScore {
       integrity: (json['integrity_score'] ?? 0.0 as num).toDouble(),
       skillValidation: (json['skill_validation_score'] ?? 0.0 as num).toDouble(),
       community: (json['community_score'] ?? 0.0 as num).toDouble(),
+      academicReliability: (json['academic_reliability_score'] as num?)?.toDouble() ?? 0.0,
+      academicConsistency: (json['academic_consistency_score'] as num?)?.toDouble() ?? 0.0,
+      erpSyncedAt: json['erp_synced_at'] != null ? DateTime.parse(json['erp_synced_at'] as String) : null,
     );
   }
 }

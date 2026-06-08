@@ -101,6 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 _buildTrustScoreCard(),
                 const SizedBox(height: 24),
+                _buildERPSyncCard(),
+                const SizedBox(height: 24),
                 _buildScamAlerts(),
                 const SizedBox(height: 24),
                 _buildSustainabilityWidget(),
@@ -223,6 +225,133 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildERPSyncCard() {
+    final academic = _data?['academic_snapshot'] ?? {};
+    final isSynced = academic['synced'] ?? false;
+    final lastSync = academic['last_sync'] != null ? DateTime.parse(academic['last_sync'] as String) : null;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isSynced ? [const Color(0xFF6200EE), const Color(0xFF7C4DFF)] : [Colors.grey.shade100, Colors.grey.shade200],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isSynced ? [BoxShadow(color: const Color(0xFF6200EE).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))] : [],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                child: Icon(isSynced ? Icons.account_balance : Icons.cloud_off, color: isSynced ? Colors.white : Colors.grey, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSynced ? 'College ERP Synced' : 'Sync College Records',
+                      style: TextStyle(color: isSynced ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    Text(
+                      isSynced ? 'Academic snapshot active' : 'Import your CGPA & Attendance',
+                      style: TextStyle(color: isSynced ? Colors.white70 : Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isSynced)
+                TextButton(
+                  onPressed: _syncERP,
+                  style: TextButton.styleFrom(backgroundColor: const Color(0xFF6200EE), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: const Text('SYNC'),
+                )
+              else
+                IconButton(
+                  onPressed: _syncERP,
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  tooltip: 'Resync',
+                ),
+            ],
+          ),
+          if (isSynced) ...[
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _academicStat('CGPA', academic['cgpa'].toString(), Colors.white),
+                _academicStat('Attendance', '${academic['attendance']}%', Colors.white),
+                _academicStat('Progress', '${academic['progress']}%', Colors.white),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _academicStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: color.withOpacity(0.7), fontSize: 11)),
+      ],
+    );
+  }
+
+  Future<void> _syncERP() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 24),
+                Text('Syncing with Institutional ERP...', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                Text('Verifying academic reliability...', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final erpService = ERPService();
+      // Fetch college_id from profile
+      final profile = await supabase.from('student_profiles').select('college_id').eq('id', user.id).single();
+      final collegeId = profile['college_id'] ?? 'c1000000-0000-0000-0000-000000000001';
+
+      await erpService.syncCollegeRecords(user.id, collegeId);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Academic records synced successfully!')));
+        _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync Failed: $e')));
+      }
+    }
   }
 
   Widget _buildScamAlerts() {

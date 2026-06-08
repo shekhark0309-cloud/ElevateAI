@@ -52,6 +52,11 @@ class StudentProfile {
   final double? longitude;
   final List<String>? skills;
   final int? trustScore;
+  final bool erpSynced;
+  final int erpCreditsCompleted;
+  final int erpBacklogs;
+  final double erpCourseProgress;
+  final List<double> erpSemesterGpa;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -80,6 +85,11 @@ class StudentProfile {
     this.longitude,
     this.skills,
     this.trustScore,
+    this.erpSynced = false,
+    this.erpCreditsCompleted = 0,
+    this.erpBacklogs = 0,
+    this.erpCourseProgress = 0.0,
+    this.erpSemesterGpa = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -110,6 +120,11 @@ class StudentProfile {
       longitude: (json['longitude'] as num?)?.toDouble(),
       skills: (json['skills'] as List?)?.map((s) => s.toString()).toList(),
       trustScore: json['trust_score'] as int?,
+      erpSynced: json['erp_synced'] as bool? ?? false,
+      erpCreditsCompleted: json['erp_credits_completed'] as int? ?? 0,
+      erpBacklogs: json['erp_backlogs'] as int? ?? 0,
+      erpCourseProgress: (json['erp_course_progress'] as num?)?.toDouble() ?? 0.0,
+      erpSemesterGpa: (json['erp_semester_gpa'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

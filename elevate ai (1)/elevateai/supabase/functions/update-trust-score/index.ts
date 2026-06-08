@@ -62,6 +62,7 @@ serve(async (req: Request) => {
     erp_data?: {
       attendance_pct: number;
       assignment_score: number;
+      semester_gpa?: number[];
     };
   };
   try {
@@ -117,7 +118,7 @@ async function recalculateTrustScore(
   supabase: ReturnType<typeof createServiceClient>,
   studentId: string,
   reason: string,
-  erpData?: { attendance_pct: number; assignment_score: number }
+  erpData?: { attendance_pct: number; assignment_score: number; semester_gpa?: number[] }
 ): Promise<TrustUpdateResult> {
 
   // ── 1. Get current trust score ────────────────────────────
@@ -171,6 +172,8 @@ async function recalculateTrustScore(
   // ── 2. Compute Reliability Score (0-100) ──────────────────
   // Sources: ERP attendance (40%), ERP assignment scores (30%), application completion rate (30%)
   let reliabilityScore = current.reliability_score;
+  let academicReliability = current.academic_reliability_score || 0;
+  let academicConsistency = current.academic_consistency_score || 0;
 
   if (erpData) {
     // Direct ERP data provided
@@ -179,11 +182,23 @@ async function recalculateTrustScore(
       0.5 * erpData.assignment_score
     );
     reliabilityScore = erpReliability;
+    academicReliability = erpReliability; // In this simulation, they are tied
+
+    // Academic Consistency: Low variance in semester GPA (M18 Task 4)
+    if (erpData.semester_gpa && erpData.semester_gpa.length > 1) {
+      const avg = erpData.semester_gpa.reduce((a, b) => a + b, 0) / erpData.semester_gpa.length;
+      const variance = erpData.semester_gpa.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / erpData.semester_gpa.length;
+      academicConsistency = Math.max(0, 100 - (variance * 100)); // Lower variance = higher consistency
+    } else {
+      academicConsistency = 75; // Baseline for first sem
+    }
 
     await supabase.from("trust_scores").update({
       erp_attendance_pct: erpData.attendance_pct,
       erp_assignment_score: erpData.assignment_score,
       erp_synced_at: new Date().toISOString(),
+      academic_reliability_score: academicReliability,
+      academic_consistency_score: academicConsistency
     }).eq("student_id", studentId);
   } else {
     // Compute from DB signals
@@ -352,6 +367,8 @@ async function recalculateTrustScore(
       overall_score: newOverallScore,
       tier: newTier,
       last_calculated: new Date().toISOString(),
+      academic_reliability_score: academicReliability,
+      academic_consistency_score: academicConsistency
     })
     .eq("student_id", studentId);
 
