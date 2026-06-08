@@ -1,0 +1,131 @@
+import 'dart:io';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import '../flutter_integration.dart';
+
+class ResumePdfGenerator {
+  static Future<File> generateResumePdf(Map<String, dynamic> resumeData, Map<String, dynamic> profile) async {
+    final pdf = pw.Document();
+
+    final summary = resumeData['summary'] ?? '';
+    final skills = List<String>.from(resumeData['skills'] ?? []);
+    final experience = List<Map<String, dynamic>>.from(resumeData['experience'] ?? []);
+    final projects = List<Map<String, dynamic>>.from(resumeData['projects'] ?? []);
+    final education = resumeData['education'] ?? {};
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          // Header
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(profile['full_name']?.toUpperCase() ?? 'STUDENT NAME',
+                  style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text('${profile['course']} | ${profile['branch']} | Year ${profile['year_of_study']}',
+                  style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+              pw.Text('Email: ${profile['email']} | Phone: ${profile['phone'] ?? 'N/A'}',
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+
+          // Summary
+          _buildSectionTitle('PROFESSIONAL SUMMARY'),
+          pw.Text(summary, style: const pw.TextStyle(fontSize: 11)),
+          pw.SizedBox(height: 20),
+
+          // Skills
+          _buildSectionTitle('TECHNICAL SKILLS'),
+          pw.Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: skills.map((s) => pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              ),
+              child: pw.Text(s, style: const pw.TextStyle(fontSize: 9)),
+            )).toList(),
+          ),
+          pw.SizedBox(height: 20),
+
+          // Experience
+          if (experience.isNotEmpty) ...[
+            _buildSectionTitle('EXPERIENCE'),
+            ...experience.map((exp) => pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 12),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(exp['title'] ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                      pw.Text(exp['duration'] ?? '', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    ],
+                  ),
+                  pw.Text(exp['org'] ?? '', style: const pw.TextStyle(fontSize: 11, color: PdfColors.blue700)),
+                  ...((exp['bullets'] as List? ?? []).map((b) => pw.Bullet(text: b, style: const pw.TextStyle(fontSize: 10)))),
+                ],
+              ),
+            )),
+            pw.SizedBox(height: 8),
+          ],
+
+          // Projects
+          if (projects.isNotEmpty) ...[
+            _buildSectionTitle('KEY PROJECTS'),
+            ...projects.map((proj) => pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 12),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(proj['name'] ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                  pw.Text('Tech Stack: ${proj['tech'] ?? ''}', style: const pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic)),
+                  pw.Text(proj['impact'] ?? '', style: const pw.TextStyle(fontSize: 10)),
+                ],
+              ),
+            )),
+            pw.SizedBox(height: 8),
+          ],
+
+          // Education
+          _buildSectionTitle('EDUCATION'),
+          pw.Text(education['degree'] ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+          pw.Text(education['institution'] ?? '', style: const pw.TextStyle(fontSize: 11)),
+          pw.Text('CGPA: ${education['cgpa']} | Year: ${education['year']}', style: const pw.TextStyle(fontSize: 10)),
+
+          pw.SizedBox(height: 20),
+          pw.Divider(color: PdfColors.grey400),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('Generated by ElevateAI Portfolio Assistant', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+          ),
+        ],
+      ),
+    );
+
+    final output = await getTemporaryDirectory();
+    final file = File("${output.path}/resume_${DateTime.now().millisecondsSinceEpoch}.pdf");
+    await file.writeAsBytes(await pdf.save());
+    return file;
+  }
+
+  static pw.Widget _buildSectionTitle(String title) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+        pw.SizedBox(height: 4),
+        pw.Container(height: 1, color: PdfColors.blue800),
+        pw.SizedBox(height: 8),
+      ],
+    );
+  }
+}

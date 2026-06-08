@@ -1,0 +1,113 @@
+# supabase/config.toml
+# ElevateAI Supabase Project Configuration
+
+[project]
+id = "elevateai"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "IPv6"
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://elevateai.app", "io.elevateai.app://auth/callback"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+minimum_password_length = 8
+password_requirements = "letters_digits"
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_email_change_enabled = true
+otp_length = 6
+otp_expiry = 3600
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 600  # 10 minutes
+template = "Your ElevateAI OTP is {{ .Code }}. Valid for 10 minutes."
+
+[auth.external.google]
+enabled = true
+# client_id and secret set via Dashboard → Auth → Providers
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"  # Better isolation
+
+[functions.recalculate-dna]
+verify_jwt = false  # We do our own auth validation; service role bypasses JWT
+
+[functions.match-teams]
+verify_jwt = false
+
+[functions.rank-opportunities]
+verify_jwt = false
+
+[functions.scam-detect]
+verify_jwt = false
+
+[functions.update-trust-score]
+verify_jwt = false
+
+[functions.sync-auth-profile]
+verify_jwt = false  # Called by auth webhook
+
+[functions.sync-erp]
+verify_jwt = false
+
+[functions.generate-portfolio]
+verify_jwt = true
+
+[functions.scheme-buddy-chat]
+verify_jwt = false
+
+[functions.refresh-leaderboard]
+verify_jwt = false
+schedule = "*/15 * * * *"  # every 15 minutes
+
+[analytics]
+enabled = true
+port = 54327
+vector_port = 54328
+backend = "postgres"
