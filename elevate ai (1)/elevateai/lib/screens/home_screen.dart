@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../flutter_integration.dart';
 import '../services/erp_service.dart';
 import '../models/nudge_model.dart';
+import '../services/native_navigation_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -142,6 +143,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Row(
           children: [
+            IconButton(
+              onPressed: () => NativeNavigationService.openOSDashboard(),
+              icon: const Icon(Icons.dashboard_customize_outlined, color: Color(0xFF6200EE)),
+              tooltip: 'Open OS Command Center',
+            ),
             IconButton(
               onPressed: () => context.push('/conversations'),
               icon: const Icon(Icons.chat_bubble_outline, size: 26),
@@ -404,12 +410,12 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           height: 56,
           child: FilledButton(
-            onPressed: () {},
+            onPressed: () => NativeNavigationService.openFocusMode(),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF6200EE),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            child: const Text('Start PomoAI', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: const Text('Start PomoAI (Native)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
