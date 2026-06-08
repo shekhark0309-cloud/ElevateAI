@@ -39,6 +39,7 @@ interface StudentEligibilityProfile {
   archetype: string | null;
   goals_short_term: string[];
   ai_summary: string | null;
+  placement_score: number;
   previously_applied: string[];
 }
 
@@ -106,7 +107,7 @@ serve(async (req: Request) => {
       .select(`
         id, state, category, course, year_of_study, cgpa,
         family_income, gender,
-        student_dna ( top_skills, target_roles, archetype, goals_short_term, ai_summary ),
+        student_dna ( top_skills, target_roles, archetype, goals_short_term, ai_summary, placement_score ),
         trust_scores ( overall_score )
       `)
       .eq("id", student_id)
@@ -142,6 +143,7 @@ serve(async (req: Request) => {
       archetype: (dna?.archetype as string) ?? null,
       goals_short_term: (dna?.goals_short_term as string[]) ?? [],
       ai_summary: (dna?.ai_summary as string) ?? null,
+      placement_score: (dna?.placement_score as number) ?? 0,
       previously_applied: previouslyApplied,
     };
 
@@ -218,6 +220,28 @@ serve(async (req: Request) => {
         if (eligible) score += 30;
         if (opp.is_featured) score += 15;
         if (opp.is_verified) score += 10;
+
+        // DNA & Work Style Weighting (M1 Task 1 & 4)
+        const archetypeWeights: Record<string, Record<string, number>> = {
+          'Builder': { 'hackathon': 15, 'project': 15, 'internship': 5 },
+          'Strategist': { 'competition': 15, 'fellowship': 10, 'workshop': 5 },
+          'Researcher': { 'research': 20, 'fellowship': 10 },
+          'Creative': { 'hackathon': 10, 'competition': 10, 'workshop': 5 },
+          'Executor': { 'internship': 15, 'workshop': 10 }
+        };
+
+        if (student.archetype && archetypeWeights[student.archetype]) {
+          score += archetypeWeights[student.archetype][opp.type] ?? 0;
+        }
+
+        // TrustScore Bonus (M1 Task 3)
+        if (student.trust_score > 80) score += 10;
+        else if (student.trust_score > 60) score += 5;
+
+        // Career Readiness Logic (M1 Task 2)
+        if (student.placement_score > 70 && opp.type === 'internship') score += 15;
+        if (student.placement_score < 40 && opp.type === 'workshop') score += 15; // Skill building
+
         score += Math.min(20, overlappingSkills.length * 4);
         if (opp.prize_amount > 50000) score += 8;
         if (opp.prize_amount > 200000) score += 5;
@@ -360,15 +384,18 @@ Return JSON array:
 
 function generateFallbackReason(opp: RankedOpportunity, student: StudentEligibilityProfile): string {
   if (opp.skill_overlap_count > 0) {
-    return `Your ${student.top_skills[0]} skills directly match what ${opp.organizer_name} is looking for in this ${opp.type}.`;
+    return `Your expertise in ${student.top_skills[0]} makes you a strong candidate for this ${opp.type}.`;
+  }
+  if (student.archetype === 'Builder' && (opp.type === 'hackathon' || opp.type === 'project')) {
+    return `As a Builder, this practical project matches your DNA perfectly.`;
+  }
+  if (student.placement_score > 70 && opp.type === 'internship') {
+    return `High career readiness detected. This internship is a great next step.`;
   }
   if (opp.is_featured) {
     return `This highly recommended opportunity is a great fit for a ${student.archetype ?? "motivated"} student like you.`;
   }
-  if (opp.days_until_deadline <= 7) {
-    return `Act fast — this ${opp.type} closes in ${opp.days_until_deadline} days and aligns with your career goals.`;
-  }
-  return `This ${opp.type} by ${opp.organizer_name} is a valuable opportunity to build experience in your target field.`;
+  return `This ${opp.type} by ${opp.organizer_name} is a valuable opportunity to build experience.`;
 }
 
 function generateFallbackTip(opp: RankedOpportunity, student: StudentEligibilityProfile): string {
