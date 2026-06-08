@@ -24,6 +24,7 @@ export 'services/task_service.dart';
 export 'services/chat_service.dart';
 export 'services/scam_service.dart';
 export 'services/cafeteria_service.dart';
+export 'services/innovation_service.dart';
 
 // ─── Initialization ───────────────────────────────────────────────────────────
 
