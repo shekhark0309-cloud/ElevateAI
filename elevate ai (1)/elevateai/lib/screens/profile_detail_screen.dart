@@ -64,7 +64,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     final name = _profileData?['full_name'] ?? 'Elevate Student';
     final trustData = _profileData?['trust_scores'] ?? {};
-    final trustScore = (trustData['overall_score'] as num?)?.toDouble() ?? 8.7;
+    final trustScore = (trustData['overall_score'] as num?)?.toDouble();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -82,12 +82,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            _buildProfileHeader(name, trustScore),
+            _buildProfileHeader(name, trustScore ?? 0.0),
             const SizedBox(height: 24),
             if (widget.studentId != null && widget.studentId != supabase.auth.currentUser?.id)
               _buildConnectionActions(),
             const SizedBox(height: 24),
-            _buildReliabilityIntelligence(trustScore),
+            _buildReliabilityIntelligence(trustScore ?? 0.0),
             const SizedBox(height: 24),
             _buildVerificationBanner(),
             const SizedBox(height: 32),
@@ -112,18 +112,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   Widget _buildProfileHeader(String name, double score) {
-    final major = _profileData?['course'] ?? 'AI & Data Science';
-    final year = _profileData?['year_of_study'] ?? 3;
-    final college = 'IIT Bombay'; // Can be fetched from college_id later if needed
+    final major = _profileData?['course'] ?? 'Course Not Set';
+    final year = _profileData?['year_of_study'] ?? '?';
 
     return Row(
       children: [
         CircleAvatar(
           radius: 40,
-          backgroundColor: Colors.grey,
+          backgroundColor: Colors.grey.shade200,
           backgroundImage: _profileData?['avatar_url'] != null
               ? NetworkImage(_profileData!['avatar_url'])
-              : const NetworkImage('https://i.pravatar.cc/150?img=12'),
+              : null,
+          child: _profileData?['avatar_url'] == null ? const Icon(Icons.person, size: 40) : null,
         ),
         const SizedBox(width: 20),
         Expanded(
@@ -132,13 +132,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             children: [
               Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               Text('$major • Year $year', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              Text(college, style: const TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.verified, color: Colors.blue.shade400, size: 16),
+                  Icon(Icons.verified, color: score > 0 ? Colors.blue.shade400 : Colors.grey, size: 16),
                   const SizedBox(width: 4),
-                  Text('Verified', style: TextStyle(color: Colors.blue.shade400, fontWeight: FontWeight.bold, fontSize: 12)),
+                  Text(score > 0 ? 'Verified' : 'Unverified', style: TextStyle(color: score > 0 ? Colors.blue.shade400 : Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
                 ],
               ),
             ],
@@ -151,7 +150,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle),
               child: Text(
-                score.toStringAsFixed(1),
+                score > 0 ? score.toStringAsFixed(1) : '?',
                 style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
@@ -202,9 +201,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           const SizedBox(height: 16),
           const Text('RELIABILITY INDICATORS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
           const SizedBox(height: 12),
-          _indicatorRow('Attendance', '92%', true),
-          _indicatorRow('Task Completion', '87%', true),
-          _indicatorRow('Peer Collaboration', trustScore > 7 ? 'High' : 'Improving', trustScore > 5),
+          _indicatorRow('Attendance', _profileData?['trust_scores']?['erp_attendance_pct'] != null ? '${_profileData!['trust_scores']['erp_attendance_pct']}%' : 'Not Synced', _profileData?['trust_scores']?['erp_attendance_pct'] != null),
+          _indicatorRow('Skill Challenges', '${_skills.where((s) => s['is_verified'] == true).length} Passed', _skills.any((s) => s['is_verified'] == true)),
+          _indicatorRow('Peer Collaboration', trustScore > 7 ? 'High' : (trustScore > 0 ? 'Improving' : 'No Data'), trustScore > 5),
         ],
       ),
     );
@@ -255,15 +254,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   Widget _buildSkillsSection() {
-    if (_skills.isEmpty && !(_profileData == null)) return const SizedBox.shrink();
-
-    final displaySkills = _skills.isNotEmpty
-        ? _skills
-        : [
-            {'skill_name': 'Python', 'proficiency': 4},
-            {'skill_name': 'SQL', 'proficiency': 3},
-            {'skill_name': 'Machine Learning', 'proficiency': 4},
-          ];
+    if (_skills.isEmpty) {
+       return const Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           Text('Skills', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+           SizedBox(height: 8),
+           Text('No verified skills yet. Take a challenge to earn badges.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+         ],
+       );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,7 +279,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: displaySkills.map((s) => _skillChip(s['skill_name'], s['proficiency'])).toList(),
+          children: _skills.map((s) => _skillChip(s['skill_name'], s['proficiency'])).toList(),
         ),
       ],
     );

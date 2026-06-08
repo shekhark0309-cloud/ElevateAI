@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTrustScoreCard() {
     final trust = _data?['trust'] ?? {};
-    final score = (trust['overall_score'] as num?)?.toDouble() ?? 8.7;
+    final score = trust['overall_score'] as num?;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text('TrustScore', style: TextStyle(color: Colors.grey, fontSize: 14)),
               Text(
-                '${score.toStringAsFixed(1)} / 10',
+                score != null ? '${score.toDouble().toStringAsFixed(1)} / 10' : 'Syncing...',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
             ],
