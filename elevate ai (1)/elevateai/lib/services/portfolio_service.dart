@@ -40,7 +40,7 @@ class PortfolioService {
   }
 
   Future<String> uploadResume(String studentId, File file, Map<String, dynamic> resumeData, {String template = 'classic'}) async {
-    final fileName = 'resumes/${studentId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final fileName = '$studentId/resumes/${DateTime.now().millisecondsSinceEpoch}.pdf';
     await _supabase.storage.from('student-assets').upload(
       fileName,
       file,

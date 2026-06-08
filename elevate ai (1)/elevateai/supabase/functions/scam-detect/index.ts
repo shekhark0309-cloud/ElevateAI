@@ -20,6 +20,7 @@ import {
   callAI,
   parseAIJson,
   createNotification,
+  getAuthenticatedUser,
 } from "../_shared/utils.ts";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -61,6 +62,9 @@ const SCAM_KEYWORDS = [
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return optionsResponse();
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+
+  const { user, error: authError } = await getAuthenticatedUser(req);
+  if (authError || !user) return errorResponse("Unauthorized", 401);
 
   let body: {
     // From Supabase Webhook

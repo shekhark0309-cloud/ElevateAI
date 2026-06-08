@@ -8,6 +8,7 @@ import {
   parseAIJson,
   isRateLimited,
   createNotification,
+  getAuthenticatedUser,
 } from "../_shared/utils.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -16,11 +17,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
 
+  const { user, error: authError } = await getAuthenticatedUser(req);
+  if (authError || !user) return errorResponse("Unauthorized", 401);
+
   try {
     const { student_id, attempt_id } = await req.json();
 
     if (!student_id || !attempt_id) {
       return errorResponse("student_id and attempt_id are required", 400);
+    }
+
+    // Security: Only allow student to evaluate their own attempt
+    if (student_id !== user.id) {
+      return errorResponse("Forbidden: You can only evaluate your own attempts", 403);
     }
 
     if (isRateLimited(`eval:${student_id}`, 10, 3600000)) {

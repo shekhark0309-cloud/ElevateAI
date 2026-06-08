@@ -14,6 +14,7 @@ import {
   parseAIJson,
   isRateLimited,
   StudentFullProfile,
+  getAuthenticatedUser,
 } from "../_shared/utils.ts";
 
 interface DNAAnalysisResult {
@@ -33,8 +34,16 @@ interface DNAAnalysisResult {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return optionsResponse();
 
+  const { user, error: authError } = await getAuthenticatedUser(req);
+  if (authError || !user) return errorResponse("Unauthorized", 401);
+
   const { student_id } = await req.json();
   if (!student_id) return errorResponse("student_id is required");
+
+  // Security: Only allow student to recalculate their own DNA
+  if (student_id !== user.id) {
+    return errorResponse("Forbidden: You can only recalculate your own DNA", 403);
+  }
 
   if (isRateLimited(`dna:${student_id}`, 10, 3600000)) {
     return errorResponse("Rate limit exceeded", 429);

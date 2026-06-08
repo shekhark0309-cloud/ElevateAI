@@ -18,6 +18,11 @@ serve(async (req: Request) => {
   }
   const { student_id = user.id, format = 'json' } = body;
 
+  // Security: Only allow student to generate their own portfolio
+  if (student_id !== user.id) {
+    return errorResponse("Forbidden: You can only generate your own portfolio", 403);
+  }
+
   // Fetch full profile
   const { data: profile, error: profileError } = await supabase
     .from('student_profiles')
