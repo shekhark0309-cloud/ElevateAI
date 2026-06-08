@@ -39,9 +39,9 @@ class PortfolioService {
     });
   }
 
-  Future<String> uploadResume(String studentId, File file, Map<String, dynamic> resumeData) async {
+  Future<String> uploadResume(String studentId, File file, Map<String, dynamic> resumeData, {String template = 'classic'}) async {
     final fileName = 'resumes/${studentId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    final path = await _supabase.storage.from('student-assets').upload(
+    await _supabase.storage.from('student-assets').upload(
       fileName,
       file,
       fileOptions: const FileOptions(contentType: 'application/pdf', upsert: true),
@@ -53,9 +53,22 @@ class PortfolioService {
       'student_id': studentId,
       'pdf_url': publicUrl,
       'resume_data': resumeData,
+      'version': (await _getNextVersion(studentId)),
+      'meta': {'template': template}
     });
 
     return publicUrl;
+  }
+
+  Future<int> _getNextVersion(String studentId) async {
+    final res = await _supabase
+        .from('resume_history')
+        .select('version')
+        .eq('student_id', studentId)
+        .order('version', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return (res?['version'] as int? ?? 0) + 1;
   }
 
   Future<List<Map<String, dynamic>>> getResumeHistory(String studentId) async {

@@ -38,10 +38,11 @@ TrustScore: ${profile.trust_scores?.overall_score} (Tier: ${profile.trust_scores
 Career Readiness Score: ${profile.student_dna?.placement_score}
 Top Skills: ${profile.student_dna?.top_skills?.join(', ')}
 Verified Badges: ${profile.student_badges?.map((b: any) => b.skill_badges.name).join(', ')}
+Achievements: ${JSON.stringify(profile.student_achievements?.map((a: any) => ({ title: a.title, org: a.issued_by })))}
 Projects: ${JSON.stringify(profile.student_projects?.map((p: any) => ({ title: p.title, description: p.description, tech: p.tech_stack })))}
 Target Roles: ${profile.student_dna?.target_roles?.join(', ')}
 
-Return ONLY valid JSON with keys: summary (2 sentences, incorporate DNA and Trust), skills (array), experience (array of {title, org, duration, bullets}), projects (array of {name, tech, impact}), education ({degree, institution, cgpa, year}).`;
+Return ONLY valid JSON with keys: summary (2 sentences, incorporate DNA and Trust), skills (array), experience (array of {title, org, duration, bullets}), projects (array of {name, tech, impact}), achievements (array of {title, issued_by}), education ({degree, institution, cgpa, year}).`;
 
   try {
     const aiResponse = await callAI([{ role: 'user', content: prompt }], "Generate professional resume JSON", 1500);

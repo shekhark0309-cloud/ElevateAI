@@ -103,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 _buildERPSyncCard(),
                 const SizedBox(height: 24),
+                _buildResumeWidget(),
+                const SizedBox(height: 24),
                 _buildScamAlerts(),
                 const SizedBox(height: 24),
                 _buildSustainabilityWidget(),
@@ -352,6 +354,74 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync Failed: $e')));
       }
     }
+  }
+
+  Widget _buildResumeWidget() {
+    final portfolio = _data?['portfolio_center'] ?? {};
+    final latest = portfolio['latest_resume'];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Portfolio AI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('${portfolio['completion'] ?? 0}% Complete', style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (latest != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(16)),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.red, size: 30),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Latest Resume (v${latest['version']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text('Generated: ${latest['created_at'].toString().substring(0, 10)}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => launchUrl(Uri.parse(latest['pdf_url'])),
+                    icon: const Icon(Icons.open_in_new, size: 20),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            const Text('No resume generated yet. Let AI build one for you.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/portfolio'),
+              icon: const Icon(Icons.bolt, size: 18),
+              label: const Text('Go to Portfolio Hub'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.indigo,
+                side: const BorderSide(color: Colors.indigo),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildScamAlerts() {

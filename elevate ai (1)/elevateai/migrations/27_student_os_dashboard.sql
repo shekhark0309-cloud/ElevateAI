@@ -89,6 +89,19 @@ BEGIN
   SELECT COUNT(*) INTO v_skill_count FROM student_skills WHERE student_id = p_student_id AND is_verified = TRUE;
   v_portfolio_score := LEAST(100, (v_project_count * 20) + (v_skill_count * 5));
 
+  -- 7b. Latest Resume
+  v_portfolio := (
+    SELECT jsonb_build_object(
+      'pdf_url', pdf_url,
+      'created_at', created_at,
+      'version', version,
+      'template', meta->>'template'
+    )
+    FROM resume_history
+    WHERE student_id = p_student_id
+    ORDER BY created_at DESC LIMIT 1
+  );
+
   -- 8. Hub Data
   -- Opportunity Hub
   SELECT jsonb_build_object(
@@ -134,7 +147,8 @@ BEGIN
     'portfolio_center', jsonb_build_object(
        'completion', v_portfolio_score,
        'project_count', v_project_count,
-       'verified_skills', v_skill_count
+       'verified_skills', v_skill_count,
+       'latest_resume', v_portfolio
     ),
     'nudges', COALESCE(v_nudges, '[]'::jsonb),
     'archetype', v_dna.archetype

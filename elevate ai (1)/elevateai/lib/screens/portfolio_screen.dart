@@ -23,6 +23,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   String? _errorMessage;
   Map<String, dynamic>? _portfolio;
   Map<String, dynamic>? _profileData;
+  ResumeTemplate _selectedTemplate = ResumeTemplate.classic;
 
   @override
   void initState() {
@@ -124,6 +125,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildTemplatePicker(),
+          const SizedBox(height: 24),
           _section('SUMMARY', _portfolio!['summary']),
           const SizedBox(height: 24),
           const Text('SKILLS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -167,23 +170,63 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 
+  Widget _buildTemplatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('CHOOSE TEMPLATE',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1.1)),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: ResumeTemplate.values.map((t) {
+              final isSelected = _selectedTemplate == t;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(t.name.toUpperCase()),
+                  selected: isSelected,
+                  onSelected: (val) => setState(() => _selectedTemplate = t),
+                  selectedColor: Colors.indigo.shade100,
+                  labelStyle: TextStyle(
+                      color: isSelected ? Colors.indigo : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _generateAndExportPdf() async {
     if (_portfolio == null || _profileData == null) return;
     setState(() => _isGeneratingPdf = true);
 
     try {
       final user = supabase.auth.currentUser;
-      final pdfFile = await ResumePdfGenerator.generateResumePdf(_portfolio!, _profileData!);
+      final pdfFile = await ResumePdfGenerator.generateResumePdf(
+        _portfolio!,
+        _profileData!,
+        template: _selectedTemplate,
+      );
 
       // Upload to Supabase for storage/history
-      final publicUrl = await _portfolioService.uploadResume(user!.id, pdfFile, _portfolio!);
+      final publicUrl = await _portfolioService.uploadResume(
+        user!.id,
+        pdfFile,
+        _portfolio!,
+        template: _selectedTemplate.name,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resume generated and saved!')));
 
-        await Printing.sharePdf(
-          bytes: await pdfFile.readAsBytes(),
-          filename: 'resume_${user.id.substring(0, 5)}.pdf'
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfFile.readAsBytes(),
+          name: 'ElevateAI_Resume_${user.id.substring(0, 5)}',
         );
       }
     } catch (e) {
