@@ -219,7 +219,7 @@ class _SkillRealityScreenState extends State<SkillRealityScreen> with SingleTick
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 24),
-                Text('Claude is evaluating your code...', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('AI is evaluating your code...', style: TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
           ),

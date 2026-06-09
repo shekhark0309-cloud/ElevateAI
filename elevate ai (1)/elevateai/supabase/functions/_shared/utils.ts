@@ -224,13 +224,41 @@ export interface AIMessage {
 
 /**
  * Calls AI with fallback logic.
- * Models used: Claude 3.5 Sonnet (Primary), GPT-4o (Fallback)
+ * Models used: Gemini 1.5 Flash (Primary), Claude 3.5 Sonnet (Fallback), GPT-4o (Fallback)
  */
 export function callAI(
   messages: AIMessage[],
   systemPrompt: string,
   maxTokens = 1000
 ): Promise<string> {
+  // 1. Primary: Gemini (Google)
+  const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
+  if (geminiKey) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: { text: systemPrompt } },
+          contents: messages.map(m => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }]
+          })),
+          generationConfig: { maxOutputTokens: maxTokens }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+      }
+      console.warn("Gemini API error, trying fallback:", await response.text());
+    } catch (e) {
+      console.warn("Gemini fetch failed, trying fallback:", e);
+    }
+  }
+
+  // 2. Fallback: Anthropic (Claude)
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
 
   if (anthropicKey) {
@@ -260,52 +288,30 @@ export function callAI(
     }
   }
 
-  // Fallback: Gemini (Google)
-  const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
-  if (geminiKey) {
+  // 3. Fallback: OpenAI
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`,
+        },
         body: JSON.stringify({
-          system_instruction: { parts: { text: systemPrompt } },
-          contents: messages.map(m => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }]
-          })),
-          generationConfig: { maxOutputTokens: maxTokens }
+          model: "gpt-4o",
+          max_tokens: maxTokens,
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
+        return data.choices[0].message.content;
       }
-      console.warn("Gemini API error, trying fallback:", await response.text());
+      console.warn("OpenAI API error:", await response.text());
     } catch (e) {
-      console.warn("Gemini fetch failed, trying fallback:", e);
-    }
-  }
-
-  // Fallback: OpenAI
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        max_tokens: maxTokens,
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.choices[0].message.content;
+      console.warn("OpenAI fetch failed:", e);
     }
   }
 

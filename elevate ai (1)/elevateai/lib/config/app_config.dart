@@ -14,6 +14,11 @@ class AppConfig {
     defaultValue: '',
   );
 
+  static const geminiApiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: '',
+  );
+
   static const fcmSenderId = String.fromEnvironment(
     'FCM_SENDER_ID',
     defaultValue: '231916737463',

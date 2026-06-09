@@ -179,7 +179,10 @@ Refresh Token Expiry: 604800 (7 days)
 ## STEP 8 — Set Edge Function Secrets
 
 ```bash
-# Anthropic AI (required for DNA, matching, scam detection)
+# Google Gemini AI (required for DNA, matching, scam detection)
+supabase secrets set GEMINI_API_KEY=your_gemini_api_key_here
+
+# Anthropic AI (optional fallback)
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-api03-...
 
 # OpenAI fallback (optional)

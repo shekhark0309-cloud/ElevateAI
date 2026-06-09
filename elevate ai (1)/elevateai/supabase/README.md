@@ -9,7 +9,7 @@ graph TD
     A[Flutter App] --> B[Supabase Client SDK]
     B --> C[PostgreSQL: Tables, Views, RPCs]
     B --> D[Edge Functions: TypeScript / AI]
-    D --> E[Claude 3.5 Sonnet: Analysis & Personalization]
+    D --> E[Gemini 1.5 Flash: Analysis & Personalization]
     C --> F[Realtime: Live TrustScore & Notifications]
     D --> C[Database Updates & Logging]
 ```
