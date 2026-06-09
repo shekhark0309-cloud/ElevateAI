@@ -5,6 +5,7 @@ import '../flutter_integration.dart';
 import '../services/erp_service.dart';
 import '../models/nudge_model.dart';
 import '../services/native_navigation_service.dart';
+import '../services/flywheel_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _dashboardService = DashboardService();
+  final _flywheelService = FlywheelService();
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _data;
@@ -29,11 +31,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _syncSubscription = ERPService.onSyncComplete.listen((_) {
       if (mounted) _loadData();
     });
+
+    // Unified Flywheel Realtime listener
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      _flywheelService.subscribeToGrowthSignals(user.id, () {
+        if (mounted) _loadData();
+      });
+    }
   }
 
   @override
   void dispose() {
     _syncSubscription?.cancel();
+    _flywheelService.unsubscribeFromSignals();
     super.dispose();
   }
 
